@@ -19,8 +19,18 @@
 	"Modules": [
 		{
 			"Name" : "WidgetComponentEditor",
-			"Type" : "Runtime",
+			"Type" : "UncookedOnly",
 			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "WidgetComponent",
+			"Enabled": true
+		},
+		{
+			"Name": "Common",
+			"Enabled": true
 		}
 	]
 }
