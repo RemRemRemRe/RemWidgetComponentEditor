@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IDetailCustomization.h"
+#include "IPropertyTypeCustomization.h"
 
 class UWidgetBlueprintGeneratedClass;
 class UWidget;
@@ -13,7 +13,7 @@ class IPropertyHandle;
 /**
  * 
  */
-class WIDGETCOMPONENTEDITOR_API FComponentBasedWidgetDetails : public IDetailCustomization
+class WIDGETCOMPONENTEDITOR_API FComponentBasedWidgetDetails : public IPropertyTypeCustomization
 {
 #pragma region Data Members
 
@@ -31,12 +31,17 @@ class WIDGETCOMPONENTEDITOR_API FComponentBasedWidgetDetails : public IDetailCus
 
 public:
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
-	static TSharedRef<IDetailCustomization> MakeInstance();
+	static TSharedRef<IPropertyTypeCustomization> MakeInstance();
+	
+	virtual void CustomizeHeader( TSharedRef<IPropertyHandle> StructPropertyHandle, FDetailWidgetRow& HeaderRow,
+		IPropertyTypeCustomizationUtils& CustomizationUtils ) override;
+	virtual void CustomizeChildren( TSharedRef<IPropertyHandle> StructPropertyHandle, IDetailChildrenBuilder& DetailBuilder,
+		IPropertyTypeCustomizationUtils& CustomizationUtils ) override;
 
-	virtual void CustomizeDetails( IDetailLayoutBuilder& DetailBuilder ) override;
 
 private:
-	void GenerateWidgetForComponent(IDetailLayoutBuilder& DetailBuilder, const UObject* Component, uint32 ComponentIndex);
+	void GenerateWidgetForComponent(IDetailChildrenBuilder& DetailBuilder, const UObject* Component,
+		uint32 ComponentIndex, const TSharedPtr<IPropertyHandle> ComponentHandle);
 	
 	TSharedRef<SWidget> GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle);
 	

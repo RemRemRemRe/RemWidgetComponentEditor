@@ -3,12 +3,11 @@
 
 #include "ComponentBasedWidgetDetails.h"
 
+#include "ComponentBasedWidget.h"
 #include "DetailCategoryBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
 #include "IDetailChildrenBuilder.h"
-#include "WidgetComponentBase.h"
-#include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Widget.h"
 #include "Widgets/Input/SSearchBox.h"
@@ -16,96 +15,91 @@
 
 #define LOCTEXT_NAMESPACE "ComponentBasedWidget"
 
-TSharedRef<IDetailCustomization> FComponentBasedWidgetDetails::MakeInstance()
+TSharedRef<IPropertyTypeCustomization> FComponentBasedWidgetDetails::MakeInstance()
 {
 	return MakeShared<FComponentBasedWidgetDetails>();
 }
 
-const FName ComponentsName = TEXT("Components");
-
-void FComponentBasedWidgetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
+void FComponentBasedWidgetDetails::CustomizeHeader(const TSharedRef<IPropertyHandle> StructPropertyHandle,
+	FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
-	TArray< TWeakObjectPtr<UObject> > ObjectsBeingCustomized;
-	DetailBuilder.GetObjectsBeingCustomized(ObjectsBeingCustomized);
+}
 
-	CheckCondition(ObjectsBeingCustomized.Num() > 0, return;);
-
-	const TWeakObjectPtr<>& ComponentBasedWidgetPtr = ObjectsBeingCustomized[0];
-	WidgetBlueprintClass = Cast<UWidgetBlueprintGeneratedClass>(ComponentBasedWidgetPtr.Get()->GetClass());
+void FComponentBasedWidgetDetails::CustomizeChildren(const TSharedRef<IPropertyHandle> StructPropertyHandle,
+    IDetailChildrenBuilder& DetailBuilder, IPropertyTypeCustomizationUtils& CustomizationUtils)
+{
+	WidgetBlueprintClass = Cast<UWidgetBlueprintGeneratedClass>(const_cast<UClass*>(StructPropertyHandle->GetOuterBaseClass()));
 
 	CheckCondition(WidgetBlueprintClass.IsValid(), return;);
 
-	const TSharedPtr<IPropertyHandleArray> ComponentsProperty = DetailBuilder.GetProperty(ComponentsName)->AsArray();
-	CheckCondition(ComponentsProperty.IsValid(), return;);
+	const TSharedPtr<IPropertyHandle> ComponentsProperty = StructPropertyHandle->GetChildHandle(
+		GET_MEMBER_NAME_CHECKED(FWidgetComponentContainer, Components));
+	
+	DetailBuilder.AddProperty(ComponentsProperty.ToSharedRef());
 
 	uint32 ComponentNum;
-	ComponentsProperty->GetNumElements(ComponentNum);
+	ComponentsProperty->GetNumChildren(ComponentNum);
 	for (uint32 Index = 0; Index < ComponentNum; ++Index)
 	{
-		TSharedPtr<IPropertyHandle> ChildHandle = ComponentsProperty->GetElement(Index);
-		CheckCondition(ChildHandle.IsValid(), continue;);
+		const TSharedPtr<IPropertyHandle> ComponentHandle = ComponentsProperty->GetChildHandle(Index);
+		CheckCondition(ComponentHandle, continue;);
 
 		UObject* Component;
 
-		if (const FPropertyAccess::Result Result = ChildHandle->GetValue(Component);
+		if (const FPropertyAccess::Result Result = ComponentHandle->GetValue(Component);
 			Result != FPropertyAccess::Result::Success || !Component)
 		{
 			continue;
 		}
 
-		GenerateWidgetForComponent(DetailBuilder, Component, Index);
+		GenerateWidgetForComponent(DetailBuilder, Component, Index, ComponentHandle->GetChildHandle(0)->GetChildHandle(0));
 	}
 }
 
-void FComponentBasedWidgetDetails::GenerateWidgetForComponent(IDetailLayoutBuilder& DetailBuilder, const UObject* Component,
-	uint32 ComponentIndex)
+void FComponentBasedWidgetDetails::GenerateWidgetForComponent(IDetailChildrenBuilder& DetailBuilder, const UObject* Component,
+                                                              uint32 ComponentIndex, const TSharedPtr<IPropertyHandle> ComponentHandle)
 {
-	TArray<FName> WidgetPropertyNames;
-	for (TFieldIterator<FObjectProperty> It(Component->GetClass()); It; ++It)
+	uint32 ComponentPropertyNum;
+	ComponentHandle->GetNumChildren(ComponentPropertyNum);
+	for (uint32 Index = 0; Index < ComponentPropertyNum; ++Index)
 	{
-		const FObjectProperty* ObjectProperty = *It;
-		CheckPointer(ObjectProperty, continue;);
+		TSharedPtr<IPropertyHandle> WidgetPropertyHandle = ComponentHandle->GetChildHandle(Index);
+		CheckCondition(WidgetPropertyHandle.IsValid(), continue;);
 
-		if (ObjectProperty->PropertyClass->IsChildOf(UWidget::StaticClass()))
+		const FObjectPropertyBase* Property = CastField<FObjectPropertyBase>(WidgetPropertyHandle->GetProperty());
+		if (!Property)
 		{
-			WidgetPropertyNames.Emplace(ObjectProperty->GetName());
+			continue;
 		}
-	}
 
-	TArray<TSharedRef<IPropertyHandle> > WidgetPropertyHandles;
-	WidgetPropertyHandles.Reserve(WidgetPropertyNames.Num());
-
-	for (const FName& WidgetPropertyName : WidgetPropertyNames)
-	{
-		const FName PropertyPath = *FString::Format(TEXT("{0}[{1}].{2}"),
-			{ComponentsName.ToString(), ComponentIndex, WidgetPropertyName.ToString()});
-		
-		WidgetPropertyHandles.Emplace(DetailBuilder.GetProperty(PropertyPath));
-	}
-		
-	for	(const TSharedRef<IPropertyHandle> WidgetPropertyHandle : WidgetPropertyHandles)
-	{
-		IDetailPropertyRow* WidgetRow = DetailBuilder.EditDefaultProperty(WidgetPropertyHandle);
-		CheckPointer(WidgetRow, continue;);
-		
-		if (FDetailWidgetDecl* CustomValueWidget = WidgetRow->CustomValueWidget())
+		if (!Property->PropertyClass->IsChildOf<UWidget>())
 		{
-			(*CustomValueWidget)
+			continue;
+		}
+
+		WidgetPropertyHandle->MarkHiddenByCustomization();
+
+		IDetailPropertyRow& WidgetRow = DetailBuilder.AddProperty(WidgetPropertyHandle.ToSharedRef());
+		WidgetRow.CustomWidget()
+		.NameContent()
+		[
+			WidgetPropertyHandle->CreatePropertyNameWidget()
+		]
+		.ValueContent()
+		[
+			SAssignNew(WidgetListComboButton, SComboButton)
+			.ButtonStyle(FEditorStyle::Get(), "PropertyEditor.AssetComboStyle")
+			.ForegroundColor(FEditorStyle::GetColor("PropertyEditor.AssetName.ColorAndOpacity"))
+			.OnGetMenuContent(this, &FComponentBasedWidgetDetails::GetPopupContent, WidgetPropertyHandle)
+			.ContentPadding(2.0f)
+			.IsEnabled(!WidgetPropertyHandle->IsEditConst())
+			.ButtonContent()
 			[
-				SAssignNew(WidgetListComboButton, SComboButton)
-				.ButtonStyle(FEditorStyle::Get(), "PropertyEditor.AssetComboStyle")
-				.ForegroundColor(FEditorStyle::GetColor("PropertyEditor.AssetName.ColorAndOpacity"))
-				.OnGetMenuContent(this, &FComponentBasedWidgetDetails::GetPopupContent, TSharedPtr<IPropertyHandle>(WidgetPropertyHandle))
-				.ContentPadding(2.0f)
-				.IsEnabled(!WidgetPropertyHandle->IsEditConst())
-				.ButtonContent()
-				[
-					SNew(STextBlock)
-					.Text(this, &FComponentBasedWidgetDetails::GetCurrentValueText, TSharedPtr<IPropertyHandle>(WidgetPropertyHandle))
-					.Font(IDetailLayoutBuilder::GetDetailFont())
-				]
-			];
-		}
+				SNew(STextBlock)
+				.Text(this, &FComponentBasedWidgetDetails::GetCurrentValueText, WidgetPropertyHandle)
+				.Font(IDetailLayoutBuilder::GetDetailFont())
+			]
+		];
 	}
 }
 
@@ -187,12 +181,8 @@ void FComponentBasedWidgetDetails::OnSelectionChanged(const TWeakObjectPtr<UWidg
 	{
 		if (ChildHandle.IsValid())
 		{
-			TArray<FString> References;
-			for (int32 Index = 0; Index < ChildHandle->GetNumPerObjectValues(); ++Index)
-			{
-				References.Add(InItem.Get()->GetPathName());
-			}
-			ChildHandle->SetPerObjectValues(References);
+			const FString ObjectPathName = InItem.IsValid() ? InItem->GetPathName() : TEXT("None");
+			CheckCondition(ChildHandle->SetValueFromFormattedString(ObjectPathName) == FPropertyAccess::Result::Success);
 
 			WidgetListComboButton->SetIsOpen(false);
 		}

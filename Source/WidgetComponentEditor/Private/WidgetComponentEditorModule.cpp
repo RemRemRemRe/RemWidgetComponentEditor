@@ -22,8 +22,8 @@ void FWidgetComponentEditorModule::StartupModule()
 	// Register customizations
 	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	
-	PropertyModule.RegisterCustomClassLayout(UComponentBasedWidget::StaticClass()->GetFName(),
-		FOnGetDetailCustomizationInstance::CreateStatic(&FComponentBasedWidgetDetails::MakeInstance));
+	PropertyModule.RegisterCustomPropertyTypeLayout(FWidgetComponentContainer::StaticStruct()->GetFName(),
+		FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FComponentBasedWidgetDetails::MakeInstance));
 	
 	PropertyModule.NotifyCustomizationModuleChanged();
 }
@@ -37,7 +37,7 @@ void FWidgetComponentEditorModule::ShutdownModule()
 	// Register customizations
 	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	
-	PropertyModule.UnregisterCustomPropertyTypeLayout(UComponentBasedWidget::StaticClass()->GetFName());
+	PropertyModule.UnregisterCustomPropertyTypeLayout(FWidgetComponentContainer::StaticStruct()->GetFName());
 	
 	PropertyModule.NotifyCustomizationModuleChanged();
 }
