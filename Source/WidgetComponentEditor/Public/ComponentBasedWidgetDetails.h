@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "IDetailGroup.h"
 #include "IPropertyTypeCustomization.h"
 
 class UWidgetBlueprintGeneratedClass;
@@ -27,6 +28,8 @@ class WIDGETCOMPONENTEDITOR_API FComponentBasedWidgetDetails : public IPropertyT
 
 	TWeakObjectPtr<UWidgetBlueprintGeneratedClass> WidgetBlueprintClass;
 
+	TSharedPtr<IPropertyHandle> ComponentsProperty;
+
 #pragma endregion Data Members
 
 public:
@@ -40,8 +43,8 @@ public:
 
 
 private:
-	void GenerateWidgetForComponent(IDetailChildrenBuilder& DetailBuilder, const UObject* Component,
-		uint32 ComponentIndex, const TSharedPtr<IPropertyHandle> ComponentHandle);
+	void GenerateWidgetForComponent(::IDetailChildrenBuilder& DetailBuilder, ::IDetailGroup& ComponentsGroup,
+	                                const ::UObject* Component, FPlatformTypes::uint32 ComponentIndex, const TSharedPtr<IPropertyHandle> ComponentHandle);
 	
 	TSharedRef<SWidget> GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle);
 	

@@ -8,6 +8,7 @@
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
 #include "IDetailChildrenBuilder.h"
+#include "IDetailGroup.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Widget.h"
 #include "Widgets/Input/SSearchBox.h"
@@ -32,10 +33,12 @@ void FComponentBasedWidgetDetails::CustomizeChildren(const TSharedRef<IPropertyH
 
 	CheckCondition(WidgetBlueprintClass.IsValid(), return;);
 
-	const TSharedPtr<IPropertyHandle> ComponentsProperty = StructPropertyHandle->GetChildHandle(
+	ComponentsProperty = StructPropertyHandle->GetChildHandle(
 		GET_MEMBER_NAME_CHECKED(FWidgetComponentContainer, Components));
 	
-	DetailBuilder.AddProperty(ComponentsProperty.ToSharedRef());
+	const FName ComponentsGroupName = TEXT("Components");
+	IDetailGroup& ComponentsGroup = DetailBuilder.AddGroup(ComponentsGroupName, FText::FromName(ComponentsGroupName));
+	ComponentsGroup.HeaderProperty(ComponentsProperty.ToSharedRef());
 
 	uint32 ComponentNum;
 	ComponentsProperty->GetNumChildren(ComponentNum);
@@ -52,51 +55,65 @@ void FComponentBasedWidgetDetails::CustomizeChildren(const TSharedRef<IPropertyH
 			continue;
 		}
 
-		GenerateWidgetForComponent(DetailBuilder, Component, Index, ComponentHandle->GetChildHandle(0)->GetChildHandle(0));
+		GenerateWidgetForComponent(DetailBuilder, ComponentsGroup, Component, Index, ComponentHandle);
 	}
 }
 
-void FComponentBasedWidgetDetails::GenerateWidgetForComponent(IDetailChildrenBuilder& DetailBuilder, const UObject* Component,
-                                                              uint32 ComponentIndex, const TSharedPtr<IPropertyHandle> ComponentHandle)
+void FComponentBasedWidgetDetails::GenerateWidgetForComponent(IDetailChildrenBuilder& DetailBuilder, IDetailGroup& ComponentsGroup, const UObject* Component,
+	uint32 ComponentIndex, const TSharedPtr<IPropertyHandle> ComponentHandle)
 {
+	IDetailGroup* ComponentNameGroup;
+	{
+		const FName ComponentGroupName = *FString::Format(TEXT("Index[{0}]"),{ComponentIndex});
+		IDetailGroup& ComponentGroup = ComponentsGroup.AddGroup(ComponentGroupName, FText::FromName(ComponentGroupName));
+		
+		ComponentGroup
+		.HeaderProperty(ComponentHandle.ToSharedRef())
+		.EditCondition(ComponentHandle->IsEditable(), {});
+
+		const FName ComponentName = Component->GetFName();
+		ComponentNameGroup = &ComponentGroup.AddGroup(ComponentName, FText::FromName(ComponentName));
+		CheckPointer(ComponentNameGroup, return;);
+	}
+
+
+	const TSharedPtr<IPropertyHandle> TrueComponentHandle = ComponentHandle->GetChildHandle(0)->GetChildHandle(0);
+	
 	uint32 ComponentPropertyNum;
-	ComponentHandle->GetNumChildren(ComponentPropertyNum);
+	TrueComponentHandle->GetNumChildren(ComponentPropertyNum);
+
 	for (uint32 Index = 0; Index < ComponentPropertyNum; ++Index)
 	{
-		TSharedPtr<IPropertyHandle> WidgetPropertyHandle = ComponentHandle->GetChildHandle(Index);
-		CheckCondition(WidgetPropertyHandle.IsValid(), continue;);
+		TSharedPtr<IPropertyHandle> PropertyHandle = TrueComponentHandle->GetChildHandle(Index);
+		CheckCondition(PropertyHandle.IsValid(), continue;);
 
-		const FObjectPropertyBase* Property = CastField<FObjectPropertyBase>(WidgetPropertyHandle->GetProperty());
-		if (!Property)
+		IDetailPropertyRow& WidgetPropertyRow = ComponentNameGroup->AddPropertyRow(PropertyHandle.ToSharedRef());
+		WidgetPropertyRow.EditCondition(PropertyHandle->IsEditable(), {});
+		
+
+		if (const FObjectPropertyBase* Property = CastField<FObjectPropertyBase>(PropertyHandle->GetProperty());
+			!Property || !Property->PropertyClass->IsChildOf<UWidget>())
 		{
 			continue;
 		}
-
-		if (!Property->PropertyClass->IsChildOf<UWidget>())
-		{
-			continue;
-		}
-
-		WidgetPropertyHandle->MarkHiddenByCustomization();
-
-		IDetailPropertyRow& WidgetRow = DetailBuilder.AddProperty(WidgetPropertyHandle.ToSharedRef());
-		WidgetRow.CustomWidget()
+		
+		WidgetPropertyRow.CustomWidget()
 		.NameContent()
 		[
-			WidgetPropertyHandle->CreatePropertyNameWidget()
+			PropertyHandle->CreatePropertyNameWidget()
 		]
 		.ValueContent()
 		[
 			SAssignNew(WidgetListComboButton, SComboButton)
 			.ButtonStyle(FEditorStyle::Get(), "PropertyEditor.AssetComboStyle")
 			.ForegroundColor(FEditorStyle::GetColor("PropertyEditor.AssetName.ColorAndOpacity"))
-			.OnGetMenuContent(this, &FComponentBasedWidgetDetails::GetPopupContent, WidgetPropertyHandle)
+			.OnGetMenuContent(this, &FComponentBasedWidgetDetails::GetPopupContent, PropertyHandle)
 			.ContentPadding(2.0f)
-			.IsEnabled(!WidgetPropertyHandle->IsEditConst())
+			.IsEnabled(!PropertyHandle->IsEditConst())
 			.ButtonContent()
 			[
 				SNew(STextBlock)
-				.Text(this, &FComponentBasedWidgetDetails::GetCurrentValueText, WidgetPropertyHandle)
+				.Text(this, &FComponentBasedWidgetDetails::GetCurrentValueText, PropertyHandle)
 				.Font(IDetailLayoutBuilder::GetDetailFont())
 			]
 		];
