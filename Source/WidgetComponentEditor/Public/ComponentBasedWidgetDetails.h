@@ -18,17 +18,9 @@ class WIDGETCOMPONENTEDITOR_API FComponentBasedWidgetDetails : public IPropertyT
 {
 #pragma region Data Members
 
-	TSharedPtr<SComboButton> WidgetListComboButton = nullptr;
-
-	TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView;
-
 	TArray<TWeakObjectPtr<UWidget>> ReferencableWidgets;
 
-	TSharedPtr<SSearchBox> SearchBox;
-
 	TWeakObjectPtr<UWidgetBlueprintGeneratedClass> WidgetBlueprintClass;
-
-	TSharedPtr<IPropertyHandle> ComponentsProperty;
 
 #pragma endregion Data Members
 
@@ -43,20 +35,22 @@ public:
 
 
 private:
-	void GenerateWidgetForComponent(::IDetailChildrenBuilder& DetailBuilder, ::IDetailGroup& ComponentsGroup,
-	                                const ::UObject* Component, FPlatformTypes::uint32 ComponentIndex, const TSharedPtr<IPropertyHandle> ComponentHandle);
+	void ForceRefreshDetails(IDetailChildrenBuilder* DetailBuilder);
 	
-	TSharedRef<SWidget> GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle);
+	void GenerateWidgetForComponent(IDetailGroup& ComponentsGroup,
+									const UObject* Component, uint32 ComponentIndex, const TSharedPtr<IPropertyHandle> ComponentHandle);
 	
-	FText GetCurrentValueText(const TSharedPtr<IPropertyHandle> ChildHandle) const;
+	TSharedRef<SWidget> GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SComboButton> WidgetListComboButton);
+
+	static FText GetCurrentValueText(const TSharedPtr<IPropertyHandle> ChildHandle);
 	
-	void OnSelectionChanged(TWeakObjectPtr<UWidget> InItem, ESelectInfo::Type SelectionInfo, const TSharedPtr<IPropertyHandle> ChildHandle) const;
+	void OnSelectionChanged(TWeakObjectPtr<UWidget> InItem, ESelectInfo::Type SelectionInfo, const TSharedPtr<IPropertyHandle> ChildHandle,
+		const TSharedPtr<SComboButton> WidgetListComboButton) const;
 	
 	TSharedRef<ITableRow> OnGenerateListItem(TWeakObjectPtr<UWidget> InItem,
-	                        const TSharedRef<STableViewBase>& OwnerTable) const;
+											const TSharedRef<STableViewBase>& OwnerTable) const;
+
+	static UWidget* GetCurrentValue(const TSharedPtr<IPropertyHandle> ChildHandle, int32& OutResult);
 	
-	UWidget* GetCurrentValue(const TSharedPtr<IPropertyHandle> ChildHandle) const;
-	
-	
-	void OnFilterTextChanged(const FText& InFilterText, const TSharedPtr<IPropertyHandle> ChildHandle);
+	void OnFilterTextChanged(const FText& InFilterText, const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView);
 };

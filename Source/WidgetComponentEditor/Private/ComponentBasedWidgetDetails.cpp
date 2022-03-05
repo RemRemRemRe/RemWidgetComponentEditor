@@ -33,13 +33,17 @@ void FComponentBasedWidgetDetails::CustomizeChildren(const TSharedRef<IPropertyH
 
 	CheckCondition(WidgetBlueprintClass.IsValid(), return;);
 
-	ComponentsProperty = StructPropertyHandle->GetChildHandle(
+	const TSharedPtr<IPropertyHandle> ComponentsProperty = StructPropertyHandle->GetChildHandle(
 		GET_MEMBER_NAME_CHECKED(FWidgetComponentContainer, Components));
 	
 	const FName ComponentsGroupName = TEXT("Components");
 	IDetailGroup& ComponentsGroup = DetailBuilder.AddGroup(ComponentsGroupName, FText::FromName(ComponentsGroupName));
 	ComponentsGroup.HeaderProperty(ComponentsProperty.ToSharedRef());
 
+	// refresh detail view when value changed, element added, deleted, inserted, etc...
+	ComponentsProperty->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this,
+		&FComponentBasedWidgetDetails::ForceRefreshDetails, &DetailBuilder));
+	
 	uint32 ComponentNum;
 	ComponentsProperty->GetNumChildren(ComponentNum);
 	for (uint32 Index = 0; Index < ComponentNum; ++Index)
@@ -49,17 +53,23 @@ void FComponentBasedWidgetDetails::CustomizeChildren(const TSharedRef<IPropertyH
 
 		UObject* Component;
 
+		// nullptr is allowed, new element is always nullptr
 		if (const FPropertyAccess::Result Result = ComponentHandle->GetValue(Component);
-			Result != FPropertyAccess::Result::Success || !Component)
+			Result != FPropertyAccess::Result::Success/* || !Component*/)
 		{
 			continue;
 		}
 
-		GenerateWidgetForComponent(DetailBuilder, ComponentsGroup, Component, Index, ComponentHandle);
+		GenerateWidgetForComponent(ComponentsGroup, Component, Index, ComponentHandle);
 	}
 }
 
-void FComponentBasedWidgetDetails::GenerateWidgetForComponent(IDetailChildrenBuilder& DetailBuilder, IDetailGroup& ComponentsGroup, const UObject* Component,
+void FComponentBasedWidgetDetails::ForceRefreshDetails(IDetailChildrenBuilder* DetailBuilder)
+{
+	DetailBuilder->GetParentCategory().GetParentLayout().ForceRefreshDetails();
+}
+
+void FComponentBasedWidgetDetails::GenerateWidgetForComponent(IDetailGroup& ComponentsGroup, const UObject* Component,
 	uint32 ComponentIndex, const TSharedPtr<IPropertyHandle> ComponentHandle)
 {
 	IDetailGroup* ComponentNameGroup;
@@ -71,11 +81,16 @@ void FComponentBasedWidgetDetails::GenerateWidgetForComponent(IDetailChildrenBui
 		.HeaderProperty(ComponentHandle.ToSharedRef())
 		.EditCondition(ComponentHandle->IsEditable(), {});
 
-		const FName ComponentName = Component->GetFName();
+		// new element?
+		if (!Component)
+		{
+			return;
+		}
+		
+		const FName ComponentName = Component->GetClass()->GetFName();
 		ComponentNameGroup = &ComponentGroup.AddGroup(ComponentName, FText::FromName(ComponentName));
 		CheckPointer(ComponentNameGroup, return;);
 	}
-
 
 	const TSharedPtr<IPropertyHandle> TrueComponentHandle = ComponentHandle->GetChildHandle(0)->GetChildHandle(0);
 	
@@ -96,6 +111,24 @@ void FComponentBasedWidgetDetails::GenerateWidgetForComponent(IDetailChildrenBui
 		{
 			continue;
 		}
+
+		TSharedPtr<SComboButton> ComboButton = SNew(SComboButton)
+			.ButtonStyle(FEditorStyle::Get(), "PropertyEditor.AssetComboStyle")
+			.ForegroundColor(FEditorStyle::GetColor("PropertyEditor.AssetName.ColorAndOpacity"))
+			.ContentPadding(2.0f)
+			.IsEnabled(!PropertyHandle->IsEditConst())
+			.ButtonContent()
+			[
+				SNew(STextBlock)
+				.Text(TAttribute<FText>::CreateLambda([=]
+				{
+					return GetCurrentValueText(PropertyHandle);
+				}))
+				.Font(IDetailLayoutBuilder::GetDetailFont())
+			];
+
+		ComboButton->SetOnGetMenuContent(FOnGetContent::CreateSP(
+			this, &FComponentBasedWidgetDetails::GetPopupContent, PropertyHandle, ComboButton));
 		
 		WidgetPropertyRow.CustomWidget()
 		.NameContent()
@@ -104,23 +137,13 @@ void FComponentBasedWidgetDetails::GenerateWidgetForComponent(IDetailChildrenBui
 		]
 		.ValueContent()
 		[
-			SAssignNew(WidgetListComboButton, SComboButton)
-			.ButtonStyle(FEditorStyle::Get(), "PropertyEditor.AssetComboStyle")
-			.ForegroundColor(FEditorStyle::GetColor("PropertyEditor.AssetName.ColorAndOpacity"))
-			.OnGetMenuContent(this, &FComponentBasedWidgetDetails::GetPopupContent, PropertyHandle)
-			.ContentPadding(2.0f)
-			.IsEnabled(!PropertyHandle->IsEditConst())
-			.ButtonContent()
-			[
-				SNew(STextBlock)
-				.Text(this, &FComponentBasedWidgetDetails::GetCurrentValueText, PropertyHandle)
-				.Font(IDetailLayoutBuilder::GetDetailFont())
-			]
+			ComboButton.ToSharedRef()
 		];
 	}
 }
 
-TSharedRef<SWidget> FComponentBasedWidgetDetails::GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle)
+TSharedRef<SWidget> FComponentBasedWidgetDetails::GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle,
+	const TSharedPtr<SComboButton> WidgetListComboButton)
 {
 	constexpr bool bInShouldCloseWindowAfterMenuSelection = true;
 	constexpr bool bCloseSelfOnly = true;
@@ -128,24 +151,28 @@ TSharedRef<SWidget> FComponentBasedWidgetDetails::GetPopupContent(const TSharedP
 
 	MenuBuilder.BeginSection(NAME_None, LOCTEXT("BrowseHeader", "Browse"));
 	{
-		SAssignNew(WidgetListView, SListView<TWeakObjectPtr<UWidget>>)
+		const TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView =
+		SNew(SListView<TWeakObjectPtr<UWidget>>)
 			.ListItemsSource(&ReferencableWidgets)
-			.OnSelectionChanged(this, &FComponentBasedWidgetDetails::OnSelectionChanged, ChildHandle)
+			.OnSelectionChanged(this, &FComponentBasedWidgetDetails::OnSelectionChanged, ChildHandle, WidgetListComboButton)
 			.OnGenerateRow(this, &FComponentBasedWidgetDetails::OnGenerateListItem)
 			.SelectionMode(ESelectionMode::Single);
 
 		// Ensure no filter is applied at the time the menu opens
-		OnFilterTextChanged(FText::GetEmpty(), ChildHandle);
+		OnFilterTextChanged(FText::GetEmpty(), ChildHandle, WidgetListView);
 
-		WidgetListView->SetSelection(GetCurrentValue(ChildHandle));
+		int32 Result;
+		WidgetListView->SetSelection(GetCurrentValue(ChildHandle, Result));
 
+		TSharedPtr<SSearchBox> SearchBox;
+		
 		const TSharedRef<SVerticalBox> MenuContent =
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			[
 				SAssignNew(SearchBox, SSearchBox)
-				.OnTextChanged(this, &FComponentBasedWidgetDetails::OnFilterTextChanged, ChildHandle)
+				.OnTextChanged(this, &FComponentBasedWidgetDetails::OnFilterTextChanged, ChildHandle, WidgetListView)
 			]
 
 			+ SVerticalBox::Slot()
@@ -168,23 +195,23 @@ TSharedRef<SWidget> FComponentBasedWidgetDetails::GetPopupContent(const TSharedP
 	return MenuBuilder.MakeWidget();
 }
 
-FText FComponentBasedWidgetDetails::GetCurrentValueText(const TSharedPtr<IPropertyHandle> ChildHandle) const
+FText FComponentBasedWidgetDetails::GetCurrentValueText(const TSharedPtr<IPropertyHandle> ChildHandle)
 {
 	if (ChildHandle.IsValid())
 	{
-		switch (UObject* Object;
-			ChildHandle->GetValue(Object))
+		int32 Result;
+		const UWidget* Widget = GetCurrentValue(ChildHandle, Result);
+		switch (Result)
 		{
 			case FPropertyAccess::MultipleValues:
 				return LOCTEXT("MultipleValues", "Multiple Values");
 			case FPropertyAccess::Success:
-				if (const UWidget* Widget = Cast<UWidget>(Object))
+				if (Widget)
 				{
 					return Widget->GetLabelText();
 				}
-			break;
 			default:
-				return FText::GetEmpty();
+				break;
 		}
 	}
 
@@ -192,14 +219,21 @@ FText FComponentBasedWidgetDetails::GetCurrentValueText(const TSharedPtr<IProper
 }
 
 void FComponentBasedWidgetDetails::OnSelectionChanged(const TWeakObjectPtr<UWidget> InItem, const ESelectInfo::Type SelectionInfo,
-                                                      const TSharedPtr<IPropertyHandle> ChildHandle) const
+	const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SComboButton> WidgetListComboButton) const
 {
 	if (SelectionInfo != ESelectInfo::Direct)
 	{
 		if (ChildHandle.IsValid())
 		{
-			const FString ObjectPathName = InItem.IsValid() ? InItem->GetPathName() : TEXT("None");
-			CheckCondition(ChildHandle->SetValueFromFormattedString(ObjectPathName) == FPropertyAccess::Result::Success);
+			TArray<FString> References;
+			for (int32 Index = 0; Index < ChildHandle->GetNumPerObjectValues(); Index++)
+			{
+				References.Add(InItem.Get()->GetPathName());
+			}
+
+			// PPF_ParsingDefaultProperties is needed to set value from CDO, but that is hard coded
+			// @see FPropertyValueImpl::ImportText @line 402 FPropertyTextUtilities::PropertyToTextHelper
+			CheckCondition(ChildHandle->SetPerObjectValues(References) == FPropertyAccess::Result::Success);
 
 			WidgetListComboButton->SetIsOpen(false);
 		}
@@ -223,15 +257,18 @@ TSharedRef<ITableRow> FComponentBasedWidgetDetails::OnGenerateListItem(const TWe
 	return SNew(STableRow<TWeakObjectPtr<UWidget>>, OwnerTable);
 }
 
-UWidget* FComponentBasedWidgetDetails::GetCurrentValue(const TSharedPtr<IPropertyHandle> ChildHandle) const
+UWidget* FComponentBasedWidgetDetails::GetCurrentValue(const TSharedPtr<IPropertyHandle> ChildHandle, int32& OutResult)
 {
 	if (ChildHandle.IsValid())
 	{
-		switch (UObject* Object;
-			ChildHandle->GetValue(Object))
+		switch (TArray<FString> PerObjectValues;
+			OutResult = ChildHandle->GetPerObjectValues(PerObjectValues))
 		{
 			case FPropertyAccess::Success:
-				return Cast<UWidget>(Object);
+				if (PerObjectValues.Num() > 0)
+				{
+					return TSoftObjectPtr<UWidget>(PerObjectValues[0]).Get();
+				}
 			default:
 				break;
 		}
@@ -240,7 +277,8 @@ UWidget* FComponentBasedWidgetDetails::GetCurrentValue(const TSharedPtr<IPropert
 	return {};
 }
 
-void FComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText, const TSharedPtr<IPropertyHandle> ChildHandle)
+void FComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText,
+	const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView)
 {
 	if (ChildHandle.IsValid() && WidgetBlueprintClass.IsValid())
 	{
@@ -258,11 +296,6 @@ void FComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText
 			
 		for (UWidget* Widget : AllWidgets)
 		{
-			if (Widget->bIsVariable == false && Widget->GetDisplayLabel().IsEmpty())
-			{
-				continue;
-			}
-
 			if (!Widget->IsA(FilterWidgetClass))
 			{
 				continue;
@@ -270,13 +303,15 @@ void FComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText
 
 			if (const FString& CurrentFilterText = InFilterText.ToString();
 				CurrentFilterText.IsEmpty() ||
-				Widget->GetClass()->GetName().Contains(CurrentFilterText) ||
-				Widget->GetDisplayLabel().Contains(CurrentFilterText))
+				Widget->GetName().Contains(CurrentFilterText) ||
+				Widget->GetDisplayLabel().Contains(CurrentFilterText) ||
+				Widget->GetClass()->GetName().Contains(CurrentFilterText)
+				)
 			{
 				ReferencableWidgets.Add(Widget);
 			}
 		}
-			
+		
 		WidgetListView->RequestListRefresh();
 	}
 }
