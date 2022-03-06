@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "IDetailCustomization.h"
 #include "IDetailGroup.h"
-#include "IPropertyTypeCustomization.h"
 
 class UWidgetBlueprintGeneratedClass;
 class UWidget;
@@ -14,7 +14,7 @@ class IPropertyHandle;
 /**
  * 
  */
-class WIDGETCOMPONENTEDITOR_API FComponentBasedWidgetDetails : public IPropertyTypeCustomization
+class WIDGETCOMPONENTEDITOR_API FComponentBasedWidgetDetails : public IDetailCustomization
 {
 #pragma region Data Members
 
@@ -26,19 +26,17 @@ class WIDGETCOMPONENTEDITOR_API FComponentBasedWidgetDetails : public IPropertyT
 
 public:
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
-	static TSharedRef<IPropertyTypeCustomization> MakeInstance();
-	
-	virtual void CustomizeHeader( TSharedRef<IPropertyHandle> StructPropertyHandle, FDetailWidgetRow& HeaderRow,
-		IPropertyTypeCustomizationUtils& CustomizationUtils ) override;
-	virtual void CustomizeChildren( TSharedRef<IPropertyHandle> StructPropertyHandle, IDetailChildrenBuilder& DetailBuilder,
-		IPropertyTypeCustomizationUtils& CustomizationUtils ) override;
+	static TSharedRef<IDetailCustomization> MakeInstance();
 
+	virtual void CustomizeDetails( const TSharedPtr<IDetailLayoutBuilder>& DetailBuilder ) override;
 
 private:
-	void ForceRefreshDetails(IDetailChildrenBuilder* DetailBuilder);
+	void GenerateWidgetForComponent(IDetailGroup& ComponentsGroup, const TSharedPtr<IPropertyHandle> ComponentHandle);
+
+	void GenerateWidgetsForNestedElement(const TSharedPtr<IPropertyHandle> PropertyHandle, uint32 NumChildren,
+		TArray<TMap<FName, IDetailGroup*>>& ChildGroupLayerMapping, uint32 Layer);
 	
-	void GenerateWidgetForComponent(IDetailGroup& ComponentsGroup,
-									const UObject* Component, uint32 ComponentIndex, const TSharedPtr<IPropertyHandle> ComponentHandle);
+	void MakeCustomWidget(TSharedPtr<IPropertyHandle> PropertyHandle, IDetailPropertyRow& WidgetPropertyRow);
 	
 	TSharedRef<SWidget> GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SComboButton> WidgetListComboButton);
 

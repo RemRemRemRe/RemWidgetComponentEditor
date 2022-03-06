@@ -24,7 +24,8 @@ namespace UnrealBuildTool.Rules
 					"InputCore",
 					"WidgetComponent",
 					"Common",
-					"UMG"
+					"UMG",
+					"DetailCustomizationUtilities"
 				}
 			);
 		}

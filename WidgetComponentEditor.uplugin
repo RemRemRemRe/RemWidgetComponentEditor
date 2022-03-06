@@ -31,6 +31,10 @@
 		{
 			"Name": "Common",
 			"Enabled": true
+		},
+		{
+			"Name": "DetailCustomizationUtilities",
+			"Enabled": true
 		}
 	]
 }

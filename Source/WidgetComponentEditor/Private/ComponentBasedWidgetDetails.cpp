@@ -3,143 +3,265 @@
 
 #include "ComponentBasedWidgetDetails.h"
 
-#include "ComponentBasedWidget.h"
 #include "DetailCategoryBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
+#include "FDetailCustomizationUtilities.h"
 #include "IDetailChildrenBuilder.h"
 #include "IDetailGroup.h"
+#include "WidgetComponentBase.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Widget.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Macro/AssertionMacros.h"
+#include "Misc.h"
+#include "ObjectEditorUtils.h"
 
 #define LOCTEXT_NAMESPACE "ComponentBasedWidget"
 
-TSharedRef<IPropertyTypeCustomization> FComponentBasedWidgetDetails::MakeInstance()
+TSharedRef<IDetailCustomization> FComponentBasedWidgetDetails::MakeInstance()
 {
 	return MakeShared<FComponentBasedWidgetDetails>();
 }
 
-void FComponentBasedWidgetDetails::CustomizeHeader(const TSharedRef<IPropertyHandle> StructPropertyHandle,
-	FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
+void FComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayoutBuilder>& DetailBuilder)
 {
-}
+	// cache widget blueprint class
+	WidgetBlueprintClass = Cast<UWidgetBlueprintGeneratedClass>(DetailBuilder->GetBaseClass());
 
-void FComponentBasedWidgetDetails::CustomizeChildren(const TSharedRef<IPropertyHandle> StructPropertyHandle,
-    IDetailChildrenBuilder& DetailBuilder, IPropertyTypeCustomizationUtils& CustomizationUtils)
-{
-	WidgetBlueprintClass = Cast<UWidgetBlueprintGeneratedClass>(const_cast<UClass*>(StructPropertyHandle->GetOuterBaseClass()));
-
-	CheckCondition(WidgetBlueprintClass.IsValid(), return;);
-
-	const TSharedPtr<IPropertyHandle> ComponentsProperty = StructPropertyHandle->GetChildHandle(
-		GET_MEMBER_NAME_CHECKED(FWidgetComponentContainer, Components));
+	const FName ComponentsPropertyName = TEXT("Components");
+	const TSharedPtr<IPropertyHandle> PropertyHandle = DetailBuilder->GetProperty(ComponentsPropertyName);
+	IDetailCategoryBuilder& ComponentsCategory = DetailBuilder->EditCategory(PropertyHandle->GetDefaultCategoryName());
 	
-	const FName ComponentsGroupName = TEXT("Components");
-	IDetailGroup& ComponentsGroup = DetailBuilder.AddGroup(ComponentsGroupName, FText::FromName(ComponentsGroupName));
-	ComponentsGroup.HeaderProperty(ComponentsProperty.ToSharedRef());
+	const FProperty* ComponentsProperty = PropertyHandle->GetProperty();
+	IDetailGroup& ComponentsGroup = ComponentsCategory.AddGroup(FObjectEditorUtils::GetCategoryFName(ComponentsProperty),
+		FObjectEditorUtils::GetCategoryText(ComponentsProperty));
+	
+	ComponentsGroup.HeaderProperty(PropertyHandle.ToSharedRef());
 
 	// refresh detail view when value changed, element added, deleted, inserted, etc...
-	ComponentsProperty->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this,
-		&FComponentBasedWidgetDetails::ForceRefreshDetails, &DetailBuilder));
+	PropertyHandle->SetOnPropertyValueChanged(FSimpleDelegate::CreateLambda(
+		[DetailBuilderWeakPtr = TWeakPtr<IDetailLayoutBuilder>(DetailBuilder)]
+	{
+		if (DetailBuilderWeakPtr.IsValid())
+		{
+			DetailBuilderWeakPtr.Pin()->ForceRefreshDetails();
+		}
+	}));
 	
 	uint32 ComponentNum;
-	ComponentsProperty->GetNumChildren(ComponentNum);
+	PropertyHandle->GetNumChildren(ComponentNum);
+
+	// traverse components array
 	for (uint32 Index = 0; Index < ComponentNum; ++Index)
 	{
-		const TSharedPtr<IPropertyHandle> ComponentHandle = ComponentsProperty->GetChildHandle(Index);
+		const TSharedPtr<IPropertyHandle> ComponentHandle = PropertyHandle->GetChildHandle(Index);
 		CheckCondition(ComponentHandle, continue;);
 
-		UObject* Component;
-
-		// nullptr is allowed, new element is always nullptr
-		if (const FPropertyAccess::Result Result = ComponentHandle->GetValue(Component);
-			Result != FPropertyAccess::Result::Success/* || !Component*/)
-		{
-			continue;
-		}
-
-		GenerateWidgetForComponent(ComponentsGroup, Component, Index, ComponentHandle);
+		// Generate widget for component
+		GenerateWidgetForComponent(ComponentsGroup, ComponentHandle);
 	}
 }
 
-void FComponentBasedWidgetDetails::ForceRefreshDetails(IDetailChildrenBuilder* DetailBuilder)
+void FComponentBasedWidgetDetails::GenerateWidgetForComponent(IDetailGroup& ComponentsGroup, const TSharedPtr<IPropertyHandle> ComponentHandle)
 {
-	DetailBuilder->GetParentCategory().GetParentLayout().ForceRefreshDetails();
-}
+	// add index[] group
+	const FName ComponentGroupName = *FString::Format(TEXT("Index[{0}]"),{ComponentHandle->GetIndexInArray()});
+	IDetailGroup& ComponentGroup = ComponentsGroup.AddGroup(ComponentGroupName, FText::FromName(ComponentGroupName));
+		
+	ComponentGroup
+	.HeaderProperty(ComponentHandle.ToSharedRef())
+	.EditCondition(ComponentHandle->IsEditable(), {});
 
-void FComponentBasedWidgetDetails::GenerateWidgetForComponent(IDetailGroup& ComponentsGroup, const UObject* Component,
-	uint32 ComponentIndex, const TSharedPtr<IPropertyHandle> ComponentHandle)
-{
-	IDetailGroup* ComponentNameGroup;
+	// whether the component has valid value
+	uint32 ElementExist;
+	ComponentHandle->GetNumChildren(ElementExist);
+	if (ElementExist == 0)
 	{
-		const FName ComponentGroupName = *FString::Format(TEXT("Index[{0}]"),{ComponentIndex});
-		IDetailGroup& ComponentGroup = ComponentsGroup.AddGroup(ComponentGroupName, FText::FromName(ComponentGroupName));
-		
-		ComponentGroup
-		.HeaderProperty(ComponentHandle.ToSharedRef())
-		.EditCondition(ComponentHandle->IsEditable(), {});
-
-		// new element?
-		if (!Component)
-		{
-			return;
-		}
-		
-		const FName ComponentName = Component->GetClass()->GetFName();
-		ComponentNameGroup = &ComponentGroup.AddGroup(ComponentName, FText::FromName(ComponentName));
-		CheckPointer(ComponentNameGroup, return;);
+		return;
 	}
-
-	const TSharedPtr<IPropertyHandle> TrueComponentHandle = ComponentHandle->GetChildHandle(0)->GetChildHandle(0);
 	
-	uint32 ComponentPropertyNum;
-	TrueComponentHandle->GetNumChildren(ComponentPropertyNum);
+	/*// add element name group
+	
+	UObject* Component;
 
-	for (uint32 Index = 0; Index < ComponentPropertyNum; ++Index)
+	if (const FPropertyAccess::Result Result = ComponentHandle->GetValue(Component);
+		Result != FPropertyAccess::Result::Success || !Component)
 	{
-		TSharedPtr<IPropertyHandle> PropertyHandle = TrueComponentHandle->GetChildHandle(Index);
-		CheckCondition(PropertyHandle.IsValid(), continue;);
-
-		IDetailPropertyRow& WidgetPropertyRow = ComponentNameGroup->AddPropertyRow(PropertyHandle.ToSharedRef());
-		WidgetPropertyRow.EditCondition(PropertyHandle->IsEditable(), {});
-		
-
-		if (const FObjectPropertyBase* Property = CastField<FObjectPropertyBase>(PropertyHandle->GetProperty());
-			!Property || !Property->PropertyClass->IsChildOf<UWidget>())
-		{
-			continue;
-		}
-
-		TSharedPtr<SComboButton> ComboButton = SNew(SComboButton)
-			.ButtonStyle(FEditorStyle::Get(), "PropertyEditor.AssetComboStyle")
-			.ForegroundColor(FEditorStyle::GetColor("PropertyEditor.AssetName.ColorAndOpacity"))
-			.ContentPadding(2.0f)
-			.IsEnabled(!PropertyHandle->IsEditConst())
-			.ButtonContent()
-			[
-				SNew(STextBlock)
-				.Text(TAttribute<FText>::CreateLambda([=]
-				{
-					return GetCurrentValueText(PropertyHandle);
-				}))
-				.Font(IDetailLayoutBuilder::GetDetailFont())
-			];
-
-		ComboButton->SetOnGetMenuContent(FOnGetContent::CreateSP(
-			this, &FComponentBasedWidgetDetails::GetPopupContent, PropertyHandle, ComboButton));
-		
-		WidgetPropertyRow.CustomWidget()
-		.NameContent()
-		[
-			PropertyHandle->CreatePropertyNameWidget()
-		]
-		.ValueContent()
-		[
-			ComboButton.ToSharedRef()
-		];
+		return;
 	}
+	
+	const UClass* ComponentClass = Component->GetClass();
+	CheckCondition(ComponentClass, return;);
+	
+	IDetailGroup& ComponentNameGroup = ComponentGroup.AddGroup(ComponentClass->GetFName(),
+	                                                           ComponentClass->GetDisplayNameText());*/
+	
+	// add element property and groups
+	
+	const TSharedPtr<IPropertyHandle> WidgetComponentHandle = ComponentHandle->GetChildHandle(0);
+	uint32 NumChildren;
+	WidgetComponentHandle->GetNumChildren(NumChildren);
+
+	if (NumChildren <= 0)
+	{
+		return;
+	}
+
+	TArray<TMap<FName, IDetailGroup*>> ChildGroupLayerMapping{ { {NAME_None, &ComponentGroup} } };
+	
+	GenerateWidgetsForNestedElement(WidgetComponentHandle, NumChildren, ChildGroupLayerMapping, 0);
+}
+
+void FComponentBasedWidgetDetails::GenerateWidgetsForNestedElement(const TSharedPtr<IPropertyHandle> PropertyHandle,
+	const uint32 NumChildren, TArray<TMap<FName, IDetailGroup*>>& ChildGroupLayerMapping, const uint32 Layer)
+{
+	for (uint32 Index = 0; Index < NumChildren; ++Index)
+	{
+		TSharedPtr<IPropertyHandle> ChildHandle = PropertyHandle->GetChildHandle(Index);
+		CheckCondition(ChildHandle.IsValid(), continue;);
+
+		// if this child is a property
+		if (const FProperty* Property = ChildHandle->GetProperty())
+		{
+			// add property group
+			IDetailGroup* PropertyGroup = ChildGroupLayerMapping[Layer - 1].FindRef(NAME_None);
+			
+			if (FName PropertyGroupName = FObjectEditorUtils::GetCategoryFName(ChildHandle->GetProperty());
+				PropertyGroupName != NAME_None)
+			{
+				if (PropertyGroup = ChildGroupLayerMapping[Layer].FindRef(PropertyGroupName);
+					!PropertyGroup)
+				{
+					FText InLocalizedDisplayName = FObjectEditorUtils::GetCategoryText(ChildHandle->GetProperty());
+
+					IDetailGroup* ParentGroup = ChildGroupLayerMapping[Layer - 1][NAME_None];
+					PropertyGroup = &ParentGroup->AddGroup(PropertyGroupName, InLocalizedDisplayName);
+
+					ChildGroupLayerMapping[Layer].Add(PropertyGroupName, PropertyGroup);
+				}
+			}
+
+			// PropertyGroup need to be valid from now on
+			CheckPointer(PropertyGroup, continue;);
+
+			const UStruct* Base = UWidget::StaticClass();
+
+			bool bNeedCustomWidget = true;
+			if (const FSoftObjectProperty* ObjectPropertyBase = CastField<FSoftObjectProperty>(Property))
+			{
+				if (!ObjectPropertyBase->PropertyClass->IsChildOf(Base))
+				{
+					continue;
+				}
+			}
+			else if (const FArrayProperty* ArrayProperty = CastField<FArrayProperty>(Property))
+			{
+				if (!Common::IsPropertyClassChildOf<FSoftObjectProperty>(ArrayProperty->Inner, Base))
+				{
+					continue;
+				}
+
+				
+			}
+			else if (const FMapProperty* MapProperty = CastField<FMapProperty>(Property))
+			{
+				if (!Common::IsPropertyClassChildOf<FSoftObjectProperty>(MapProperty->KeyProp, Base))
+				{
+					continue;
+				}
+			
+				if (!Common::IsPropertyClassChildOf<FSoftObjectProperty>(MapProperty->ValueProp, Base))
+				{
+					continue;
+				}
+			}
+			else if (const FSetProperty* SetProperty = CastField<FSetProperty>(Property))
+			{
+				if (!Common::IsPropertyClassChildOf<FSoftObjectProperty>(SetProperty->ElementProp, Base))
+				{
+					continue;
+				}
+			}
+			else
+			{
+				bNeedCustomWidget = false;
+			}
+			
+			// add property row
+			IDetailPropertyRow& WidgetPropertyRow = PropertyGroup->AddPropertyRow(ChildHandle.ToSharedRef());
+			WidgetPropertyRow.EditCondition(ChildHandle->IsEditable(), {});
+
+			if (bNeedCustomWidget)
+			{
+				MakeCustomWidget(ChildHandle, WidgetPropertyRow);
+			}
+		}
+		// if this child is a category
+		else
+		{
+			// prevent duplicate adding on same layer but different category
+			if (ChildGroupLayerMapping.Num() <= static_cast<int32>(Layer + 1))
+			{
+				ChildGroupLayerMapping.AddDefaulted();
+			}
+
+			uint32 NumChildrenOfChildHandle;
+			ChildHandle->GetNumChildren(NumChildrenOfChildHandle);
+			if (NumChildrenOfChildHandle != 0)
+			{
+				/*if (FName NewGroupName = FObjectEditorUtils::GetCategoryFName(ChildHandle->GetProperty()); NewGroupName != NAME_None)
+				{
+					FText InLocalizedDisplayName = FObjectEditorUtils::GetCategoryText(ChildHandle->GetProperty());
+						
+					//ChildGroup = ParentGroup.AddGroup(NewGroupName, InLocalizedDisplayName);
+	
+					/*if (NewGroupName == NAME_None)
+					{
+						if (const FFieldClass* PropertyClass = ChildHandle->GetPropertyClass())
+						{
+							NewGroupName			= PropertyClass->GetFName();
+							InLocalizedDisplayName	= PropertyClass->GetDisplayNameText();
+						}
+					}#1#
+				}*/
+
+				// and property group and generate nested properties
+				GenerateWidgetsForNestedElement(ChildHandle, NumChildrenOfChildHandle, ChildGroupLayerMapping, Layer+ 1);
+			}
+		}
+	}
+}
+
+void FComponentBasedWidgetDetails::MakeCustomWidget(const TSharedPtr<IPropertyHandle> PropertyHandle, IDetailPropertyRow& WidgetPropertyRow)
+{
+	const TSharedPtr<SComboButton> ComboButton = SNew(SComboButton)
+	.ButtonStyle(FEditorStyle::Get(), "PropertyEditor.AssetComboStyle")
+	.ForegroundColor(FEditorStyle::GetColor("PropertyEditor.AssetName.ColorAndOpacity"))
+	.ContentPadding(2.0f)
+	.IsEnabled(!PropertyHandle->IsEditConst())
+	.ButtonContent()
+	[
+		SNew(STextBlock)
+		.Text(TAttribute<FText>::CreateLambda([=]
+		{
+			return GetCurrentValueText(PropertyHandle);
+		}))
+		.Font(IDetailLayoutBuilder::GetDetailFont())
+	];
+
+	ComboButton->SetOnGetMenuContent(FOnGetContent::CreateSP(
+		this, &FComponentBasedWidgetDetails::GetPopupContent, PropertyHandle, ComboButton));
+		
+	WidgetPropertyRow.CustomWidget()
+	.NameContent()
+	[
+		PropertyHandle->CreatePropertyNameWidget()
+	]
+	.ValueContent()
+	[
+		ComboButton.ToSharedRef()
+	];
 }
 
 TSharedRef<SWidget> FComponentBasedWidgetDetails::GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle,
@@ -250,7 +372,7 @@ TSharedRef<ITableRow> FComponentBasedWidgetDetails::OnGenerateListItem(const TWe
 			[
 				SNew(STextBlock)
 				.Font(IDetailLayoutBuilder::GetDetailFont())
-				.Text(Widget->GetLabelText())
+				.Text(FDetailCustomizationUtilities::GetWidgetName(Widget))
 			];
 	}
 
@@ -289,7 +411,13 @@ void FComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText
 			return Lhs.GetLabelText().CompareTo(Rhs.GetLabelText()) < 0;
 		});
 
-		const FObjectPropertyBase* ObjectProperty = CastFieldChecked<FObjectPropertyBase>(ChildHandle->GetProperty());
+		const FObjectPropertyBase* ObjectProperty = CastField<FObjectPropertyBase>(ChildHandle->GetProperty());
+		//CheckPointer(ObjectProperty, return;);
+		if (!ObjectProperty)
+		{
+			return;
+		}
+		
 		const UClass* FilterWidgetClass = ObjectProperty->PropertyClass;
 			
 		ReferencableWidgets.Reset();
