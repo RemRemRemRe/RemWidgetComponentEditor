@@ -25,7 +25,7 @@ namespace UnrealBuildTool.Rules
 					"WidgetComponent",
 					"Common",
 					"UMG",
-					"DetailCustomizationUtilities"
+					"DetailCustomizationUtilities",
 				}
 			);
 		}
