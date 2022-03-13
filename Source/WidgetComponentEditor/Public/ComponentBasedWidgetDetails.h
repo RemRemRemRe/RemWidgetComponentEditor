@@ -7,6 +7,7 @@
 #include "IDetailCustomization.h"
 #include "IDetailGroup.h"
 
+class UBaseWidgetBlueprint;
 class UWidgetBlueprintGeneratedClass;
 class UWidget;
 class IDetailLayoutBuilder;
@@ -15,7 +16,7 @@ class IPropertyHandle;
 using namespace FDetailCustomizationUtilities;
 
 /**
- * 
+ * Detail customization for UComponentBasedWidget
  */
 class WIDGETCOMPONENTEDITOR_API FComponentBasedWidgetDetails : public IDetailCustomization
 {
@@ -23,7 +24,7 @@ class WIDGETCOMPONENTEDITOR_API FComponentBasedWidgetDetails : public IDetailCus
 
 	TArray<TWeakObjectPtr<UWidget>> ReferencableWidgets;
 
-	TWeakObjectPtr<UWidgetBlueprintGeneratedClass> WidgetBlueprintClass;
+	TWeakObjectPtr<UWidgetBlueprintGeneratedClass> WidgetBlueprintGeneratedClass;
 
 #pragma endregion Data Members
 
@@ -34,9 +35,8 @@ public:
 	virtual void CustomizeDetails( IDetailLayoutBuilder& DetailBuilder ) override {}
 	virtual void CustomizeDetails( const TSharedPtr<IDetailLayoutBuilder>& DetailBuilder ) override;
 
-private:
-	void MakeCustomWidget(TSharedPtr<IPropertyHandle> PropertyHandle, IDetailPropertyRow& WidgetPropertyRow,
-		const EMemberContainerType MemberContainerType);
+protected:
+	TSharedRef<SWidget> MakeComboButton(const TSharedPtr<IPropertyHandle> PropertyHandle);
 	
 	TSharedRef<SWidget> GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SComboButton> WidgetListComboButton);
 

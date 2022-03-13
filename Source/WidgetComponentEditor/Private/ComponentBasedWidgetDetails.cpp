@@ -3,18 +3,21 @@
 
 #include "ComponentBasedWidgetDetails.h"
 
+#include "BaseWidgetBlueprint.h"
 #include "DetailCategoryBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
 #include "DetailCustomizationUtilities.h"
 #include "IDetailChildrenBuilder.h"
 #include "IDetailGroup.h"
+#include "IPropertyUtilities.h"
 #include "WidgetComponentBase.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Widget.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Macro/AssertionMacros.h"
 #include "ObjectEditorUtils.h"
+#include "PropertyCustomizationHelpers.h"
 
 #define LOCTEXT_NAMESPACE "ComponentBasedWidget"
 
@@ -28,7 +31,7 @@ void FComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayo
 	IDetailCustomization::CustomizeDetails(DetailBuilder);
 	
 	// cache widget blueprint class
-	WidgetBlueprintClass = Cast<UWidgetBlueprintGeneratedClass>(DetailBuilder->GetBaseClass());
+	WidgetBlueprintGeneratedClass = Cast<UWidgetBlueprintGeneratedClass>(DetailBuilder->GetBaseClass());
 
 	// generate array header widget
 	const FName ComponentsPropertyName = TEXT("Components");
@@ -40,58 +43,54 @@ void FComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayo
 	{
 		if (DetailBuilderWeakPtr.IsValid())
 		{
-			DetailBuilderWeakPtr.Pin()->ForceRefreshDetails();
+			const TSharedRef< class IPropertyUtilities > PropertyUtilities = DetailBuilderWeakPtr.Pin()->GetPropertyUtilities();
+			PropertyUtilities.Get().ForceRefresh();
 		}
 	});
 	
 	IDetailGroup& ComponentsGroup = GenerateContainerHeader(
 		PropertyHandle, ComponentsCategory, OnComponentsChanged);
 
-	auto Predicate = [this]
-	(const TSharedPtr<IPropertyHandle> Handle, IDetailPropertyRow& WidgetPropertyRow,
-		const EMemberContainerType MemberContainerType)
+	const FPropertyCustomizationFunctor Predicate =
+	[this] (const TSharedPtr<IPropertyHandle> Handle, FDetailWidgetRow& WidgetPropertyRow,
+		const EContainerCombination MemberContainerType)
 	{
-		MakeCustomWidget(Handle, WidgetPropertyRow, MemberContainerType);
+		MakeCustomWidgetForProperty(Handle, WidgetPropertyRow, MemberContainerType,
+		[this] (const TSharedPtr<IPropertyHandle> WidgetPropertyHandle)
+		{
+			return MakeComboButton(WidgetPropertyHandle);
+		});
 	};
 	
-	GenerateWidgetForContainerContent<FSoftObjectProperty>
-	(PropertyHandle, ComponentsGroup, Predicate, EMemberContainerType::NotAContainer);
+	GenerateWidgetForContainerContent<FSoftObjectProperty, UWidget>
+	(PropertyHandle, ComponentsGroup, Predicate, EContainerCombination::ContainerItself);
 }
 
-void FComponentBasedWidgetDetails::MakeCustomWidget(const TSharedPtr<IPropertyHandle> PropertyHandle,
-	IDetailPropertyRow& WidgetPropertyRow, const EMemberContainerType MemberContainerType)
+TSharedRef<SWidget> FComponentBasedWidgetDetails::MakeComboButton(const TSharedPtr<IPropertyHandle> PropertyHandle)
 {
 	const TSharedPtr<SComboButton> ComboButton = SNew(SComboButton)
-	.ButtonStyle(FEditorStyle::Get(), "PropertyEditor.AssetComboStyle")
-	.ForegroundColor(FEditorStyle::GetColor("PropertyEditor.AssetName.ColorAndOpacity"))
-	.ContentPadding(2.0f)
-	.IsEnabled(!PropertyHandle->IsEditConst())
-	.ButtonContent()
-	[
-		SNew(STextBlock)
-		.Text(TAttribute<FText>::CreateLambda([=]
-		{
-			return GetCurrentValueText<UWidget>(PropertyHandle,
-			[](const UWidget* Widget)
+		.ButtonStyle(FEditorStyle::Get(), AssetComboStyleName)
+		.ForegroundColor(FEditorStyle::GetColor(AssetNameColorName))
+		.ContentPadding(2.0f)
+		.IsEnabled(!PropertyHandle->IsEditConst())
+		.ButtonContent()
+		[
+			SNew(STextBlock)
+			.Text(TAttribute<FText>::CreateLambda([=]
 			{
-				return GetWidgetName(Widget);
-			});
-		}))
-		.Font(IDetailLayoutBuilder::GetDetailFont())
-	];
+				return GetCurrentValueText<TSoftObjectPtr<UWidget>>(PropertyHandle,
+				[](const TSoftObjectPtr<UWidget>& Widget)
+				{
+					return GetWidgetName(Widget);
+				});
+			}))
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+		];
 
 	ComboButton->SetOnGetMenuContent(FOnGetContent::CreateSP(
 		this, &FComponentBasedWidgetDetails::GetPopupContent, PropertyHandle, ComboButton));
-		
-	WidgetPropertyRow.CustomWidget()
-	.NameContent()
-	[
-		PropertyHandle->CreatePropertyNameWidget()
-	]
-	.ValueContent()
-	[
-		ComboButton.ToSharedRef()
-	];
+
+	return ComboButton.ToSharedRef();
 }
 
 TSharedRef<SWidget> FComponentBasedWidgetDetails::GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle,
@@ -114,7 +113,7 @@ TSharedRef<SWidget> FComponentBasedWidgetDetails::GetPopupContent(const TSharedP
 		OnFilterTextChanged(FText::GetEmpty(), ChildHandle, WidgetListView);
 
 		int32 Result;
-		WidgetListView->SetSelection(GetCurrentValue<UWidget>(ChildHandle, Result));
+		WidgetListView->SetSelection(GetCurrentValue<UWidget*>(ChildHandle, Result));
 
 		TSharedPtr<SSearchBox> SearchBox;
 		
@@ -152,20 +151,10 @@ void FComponentBasedWidgetDetails::OnSelectionChanged(const TWeakObjectPtr<UWidg
 {
 	if (SelectionInfo != ESelectInfo::Direct)
 	{
-		if (ChildHandle.IsValid())
-		{
-			TArray<FString> References;
-			for (int32 Index = 0; Index < ChildHandle->GetNumPerObjectValues(); Index++)
-			{
-				References.Add(InItem.Get()->GetPathName());
-			}
-
-			// PPF_ParsingDefaultProperties is needed to set value from CDO, but that is hard coded
-			// @see FPropertyValueImpl::ImportText @line 402 FPropertyTextUtilities::PropertyToTextHelper
-			CheckCondition(ChildHandle->SetPerObjectValues(References) == FPropertyAccess::Result::Success);
-
-			WidgetListComboButton->SetIsOpen(false);
-		}
+		// value should set successfully
+		CheckCondition(SetObjectValue(InItem.Get(), ChildHandle));
+		
+		WidgetListComboButton->SetIsOpen(false);
 	}
 }
 
@@ -179,7 +168,7 @@ TSharedRef<ITableRow> FComponentBasedWidgetDetails::OnGenerateListItem(const TWe
 			[
 				SNew(STextBlock)
 				.Font(IDetailLayoutBuilder::GetDetailFont())
-				.Text(GetWidgetName(Widget))
+				.Text(GetWidgetName(TSoftObjectPtr<UWidget>(Widget)))
 			];
 	}
 
@@ -189,17 +178,20 @@ TSharedRef<ITableRow> FComponentBasedWidgetDetails::OnGenerateListItem(const TWe
 void FComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText,
 	const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView)
 {
-	if (ChildHandle.IsValid() && WidgetBlueprintClass.IsValid())
+	if (ChildHandle.IsValid() && WidgetBlueprintGeneratedClass.IsValid())
 	{
+		// ONLY use UBaseWidgetBlueprint::WidgetTree
+		// rather than	UUserWidget::WidgetTree
+		// or			UWidgetBlueprintGeneratedClass::WidgetTree (the widget class version)
+		// could make our soft reference get auto renamed when widget been renamed.
 		TArray<UWidget*> AllWidgets;
-		WidgetBlueprintClass.Get()->GetWidgetTreeArchetype()->GetAllWidgets(AllWidgets);
+		Cast<UBaseWidgetBlueprint>(WidgetBlueprintGeneratedClass.Get()->ClassGeneratedBy)->WidgetTree->GetAllWidgets(AllWidgets);
 
 		AllWidgets.Sort([](const UWidget& Lhs, const UWidget& Rhs) {
 			return Lhs.GetLabelText().CompareTo(Rhs.GetLabelText()) < 0;
 		});
 
 		const FObjectPropertyBase* ObjectProperty = CastField<FObjectPropertyBase>(ChildHandle->GetProperty());
-		//CheckPointer(ObjectProperty, return;);
 		if (!ObjectProperty)
 		{
 			return;
