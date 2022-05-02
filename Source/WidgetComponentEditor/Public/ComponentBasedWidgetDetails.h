@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "DetailCustomizationUtilities.h"
 #include "IDetailCustomization.h"
-#include "IDetailGroup.h"
 
 class UBaseWidgetBlueprint;
 class UWidgetBlueprintGeneratedClass;
@@ -36,15 +35,15 @@ public:
 	virtual void CustomizeDetails( const TSharedPtr<IDetailLayoutBuilder>& DetailBuilder ) override;
 
 protected:
-	TSharedRef<SWidget> MakeComboButton(const TSharedPtr<IPropertyHandle> PropertyHandle);
+	TSharedRef<SWidget> MakeComboButton(TSharedPtr<IPropertyHandle> PropertyHandle);
 	
-	TSharedRef<SWidget> GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SComboButton> WidgetListComboButton);
+	TSharedRef<SWidget> GetPopupContent(TSharedPtr<IPropertyHandle> ChildHandle, TSharedPtr<SComboButton> WidgetListComboButton);
 
-	void OnSelectionChanged(TWeakObjectPtr<UWidget> InItem, ESelectInfo::Type SelectionInfo, const TSharedPtr<IPropertyHandle> ChildHandle,
-		const TSharedPtr<SComboButton> WidgetListComboButton) const;
+	void OnSelectionChanged(TWeakObjectPtr<UWidget> InItem, ESelectInfo::Type SelectionInfo, TSharedPtr<IPropertyHandle> ChildHandle,
+		TSharedPtr<SComboButton> WidgetListComboButton) const;
 	
 	TSharedRef<ITableRow> OnGenerateListItem(TWeakObjectPtr<UWidget> InItem,
 											const TSharedRef<STableViewBase>& OwnerTable) const;
 
-	void OnFilterTextChanged(const FText& InFilterText, const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView);
+	void OnFilterTextChanged(const FText& InFilterText, TSharedPtr<IPropertyHandle> ChildHandle, TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView);
 };

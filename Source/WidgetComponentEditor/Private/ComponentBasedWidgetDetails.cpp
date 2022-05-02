@@ -11,13 +11,13 @@
 #include "IDetailChildrenBuilder.h"
 #include "IDetailGroup.h"
 #include "IPropertyUtilities.h"
-#include "WidgetComponentBase.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Widget.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Macro/AssertionMacros.h"
 #include "ObjectEditorUtils.h"
 #include "PropertyCustomizationHelpers.h"
+#include "WidgetComponentAsExtension.h"
 
 #define LOCTEXT_NAMESPACE "ComponentBasedWidget"
 
@@ -30,12 +30,27 @@ void FComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayo
 {
 	IDetailCustomization::CustomizeDetails(DetailBuilder);
 	
+	TArray< TWeakObjectPtr<UObject> > ObjectsBeingCustomized;
+	DetailBuilder->GetObjectsBeingCustomized(ObjectsBeingCustomized);
+	CheckCondition(ObjectsBeingCustomized.Num() > 0, return;);
+
+	UUserWidget* WidgetObject = Cast<UUserWidget>(ObjectsBeingCustomized[0].Get());
+	CheckPointer(WidgetObject, return;);
+	
+	UWidgetComponentAsExtension* Extension = WidgetObject->GetExtension<UWidgetComponentAsExtension>();
+	CheckPointer(Extension, return;);
+
+	FArrayProperty* ComponentsProperty = Extension->GetComponentsProperty();
+	CheckPointer(ComponentsProperty, return;);
+	
 	// cache widget blueprint class
 	WidgetBlueprintGeneratedClass = Cast<UWidgetBlueprintGeneratedClass>(DetailBuilder->GetBaseClass());
-
+	
 	// generate array header widget
-	const FName ComponentsPropertyName = TEXT("Components");
-	const TSharedPtr<IPropertyHandle> PropertyHandle = DetailBuilder->GetProperty(ComponentsPropertyName);
+	const TSharedPtr<IPropertyHandle> PropertyHandle = DetailBuilder->GetProperty(*GetPropertyPath(ComponentsProperty));
+	CheckCondition(PropertyHandle.IsValid(), return;);
+	CheckCondition(PropertyHandle->IsValidHandle(), return;);
+	
 	IDetailCategoryBuilder& ComponentsCategory = DetailBuilder->EditCategory(PropertyHandle->GetDefaultCategoryName());
 
 	const FSimpleDelegate OnComponentsChanged = FSimpleDelegate::CreateLambda(

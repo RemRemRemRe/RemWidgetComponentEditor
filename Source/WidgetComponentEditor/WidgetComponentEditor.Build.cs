@@ -18,13 +18,14 @@ namespace UnrealBuildTool.Rules
 					"Engine",
 					"Slate",
 					"SlateCore",
+					"UMG",
+					"InputCore",
 					"UnrealEd",
 					"PropertyEditor",
 					"EditorStyle",
-					"InputCore",
+					"DeveloperSettings",
 					"WidgetComponent",
 					"Common",
-					"UMG",
 					"DetailCustomizationUtilities",
 				}
 			);
