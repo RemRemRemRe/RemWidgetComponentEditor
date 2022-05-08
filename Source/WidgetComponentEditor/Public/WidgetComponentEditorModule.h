@@ -22,7 +22,7 @@ public:
 	 */
 	static FORCEINLINE IWidgetComponentEditorModule& Get()
 	{
-		return FModuleManager::LoadModuleChecked< IWidgetComponentEditorModule >( "WidgetComponentEditorModule" );
+		return FModuleManager::LoadModuleChecked< IWidgetComponentEditorModule >( "WidgetComponentEditor" );
 	}
 
 	/**
@@ -32,7 +32,7 @@ public:
 	 */
 	static FORCEINLINE bool IsAvailable()
 	{
-		return FModuleManager::Get().IsModuleLoaded( "WidgetComponentEditorModule" );
+		return FModuleManager::Get().IsModuleLoaded( "WidgetComponentEditor" );
 	}
 	
 };

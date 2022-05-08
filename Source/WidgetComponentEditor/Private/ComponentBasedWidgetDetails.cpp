@@ -37,8 +37,11 @@ void FComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayo
 	UUserWidget* WidgetObject = Cast<UUserWidget>(ObjectsBeingCustomized[0].Get());
 	CheckPointer(WidgetObject, return;);
 	
-	UWidgetComponentAsExtension* Extension = WidgetObject->GetExtension<UWidgetComponentAsExtension>();
-	CheckPointer(Extension, return;);
+	const UWidgetComponentAsExtension* Extension = WidgetObject->GetExtension<UWidgetComponentAsExtension>();
+	if (!Extension)
+	{
+		return;
+	}
 
 	FArrayProperty* ComponentsProperty = Extension->GetComponentsProperty();
 	CheckPointer(ComponentsProperty, return;);
@@ -198,7 +201,7 @@ void FComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText
 		// ONLY use UBaseWidgetBlueprint::WidgetTree
 		// rather than	UUserWidget::WidgetTree
 		// or			UWidgetBlueprintGeneratedClass::WidgetTree (the widget class version)
-		// could make our soft reference get auto renamed when widget been renamed.
+		// could make the drop down list up to date, (after rename a widget)
 		TArray<UWidget*> AllWidgets;
 		Cast<UBaseWidgetBlueprint>(WidgetBlueprintGeneratedClass.Get()->ClassGeneratedBy)->WidgetTree->GetAllWidgets(AllWidgets);
 
