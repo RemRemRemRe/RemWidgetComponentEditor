@@ -167,7 +167,10 @@ void FWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObject
 		{
 			continue;
 		}
-
+		
+		// Remove all nullptr from UUserWidget::Extensions
+		OwnerWidgetCDO->RemoveExtension(nullptr);
+		
 		const UWidgetComponentAsExtension* Extension = OwnerWidgetCDO->GetExtension<UWidgetComponentAsExtension>();
 		if (!Extension)
 		{
