@@ -7,7 +7,7 @@
 #include "WidgetComponentEditorSetting.generated.h"
 
 /**
- * 
+ * Directly configure whatever number of `UUserWidget` classes to turn detail customization on dynamically
  */
 UCLASS(config = Editor, defaultconfig, notplaceable, BlueprintType)
 class WIDGETCOMPONENTEDITOR_API UWidgetComponentEditorSetting : public UDeveloperSettings
@@ -27,11 +27,11 @@ public:
 	FORCEINLINE void SetWidgetClassToCustomize(TArray<TSoftClassPtr<UUserWidget>> InWidgetClassToCustomize);
 
 #if WITH_EDITOR
-	
+
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
 	bool RemoveBlueprintClasses();
 
 #endif
-	
+
 };

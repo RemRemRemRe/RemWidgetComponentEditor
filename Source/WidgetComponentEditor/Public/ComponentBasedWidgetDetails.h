@@ -15,7 +15,7 @@ class IPropertyHandle;
 using namespace DetailCustomizationUtilities;
 
 /**
- * Detail customization for UComponentBasedWidget
+ * Detail customization for any user widget with UWidgetComponentAsExtension component
  */
 class WIDGETCOMPONENTEDITOR_API FComponentBasedWidgetDetails : public IDetailCustomization
 {
@@ -36,12 +36,12 @@ public:
 
 protected:
 	TSharedRef<SWidget> MakeComboButton(TSharedPtr<IPropertyHandle> PropertyHandle);
-	
+
 	TSharedRef<SWidget> GetPopupContent(TSharedPtr<IPropertyHandle> ChildHandle, TSharedPtr<SComboButton> WidgetListComboButton);
 
 	void OnSelectionChanged(TWeakObjectPtr<UWidget> InItem, ESelectInfo::Type SelectionInfo, TSharedPtr<IPropertyHandle> ChildHandle,
 		TSharedPtr<SComboButton> WidgetListComboButton) const;
-	
+
 	TSharedRef<ITableRow> OnGenerateListItem(TWeakObjectPtr<UWidget> InItem,
 											const TSharedRef<STableViewBase>& OwnerTable) const;
 
