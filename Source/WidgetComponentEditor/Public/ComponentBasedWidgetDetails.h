@@ -12,7 +12,7 @@ class UWidget;
 class IDetailLayoutBuilder;
 class IPropertyHandle;
 
-using namespace FDetailCustomizationUtilities;
+using namespace DetailCustomizationUtilities;
 
 /**
  * Detail customization for UComponentBasedWidget
