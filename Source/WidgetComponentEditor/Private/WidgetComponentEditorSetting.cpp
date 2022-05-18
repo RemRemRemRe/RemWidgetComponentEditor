@@ -34,7 +34,7 @@ void UWidgetComponentEditorSetting::PostEditChangeProperty(FPropertyChangedEvent
 		// emit a warning message
 		FNotificationInfo Info(LOCTEXT("OnlyAllowNativeClass", "Only native class is allowed."));
 		Info.bUseThrobber = true;
-		Info.Image = FEditorStyle::GetBrush(TEXT("MessageLog.Warning"));
+		Info.Image = FAppStyle::GetBrush(TEXT("MessageLog.Warning"));
 		Info.FadeOutDuration = 4.0f;
 		Info.ExpireDuration = Info.FadeOutDuration;
 		FSlateNotificationManager::Get().AddNotification(Info);

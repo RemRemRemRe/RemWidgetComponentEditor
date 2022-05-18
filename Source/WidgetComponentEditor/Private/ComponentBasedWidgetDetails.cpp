@@ -29,14 +29,14 @@ TSharedRef<IDetailCustomization> FComponentBasedWidgetDetails::MakeInstance()
 void FComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayoutBuilder>& DetailBuilder)
 {
 	IDetailCustomization::CustomizeDetails(DetailBuilder);
-	
+
 	TArray< TWeakObjectPtr<UObject> > ObjectsBeingCustomized;
 	DetailBuilder->GetObjectsBeingCustomized(ObjectsBeingCustomized);
 	CheckCondition(ObjectsBeingCustomized.Num() > 0, return;);
 
 	UUserWidget* WidgetObject = Cast<UUserWidget>(ObjectsBeingCustomized[0].Get());
 	CheckPointer(WidgetObject, return;);
-	
+
 	const UWidgetComponentAsExtension* Extension = WidgetObject->GetExtension<UWidgetComponentAsExtension>();
 	if (!Extension)
 	{
@@ -45,15 +45,15 @@ void FComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayo
 
 	FArrayProperty* ComponentsProperty = Extension->GetComponentsProperty();
 	CheckPointer(ComponentsProperty, return;);
-	
+
 	// cache widget blueprint class
 	WidgetBlueprintGeneratedClass = Cast<UWidgetBlueprintGeneratedClass>(DetailBuilder->GetBaseClass());
-	
+
 	// generate array header widget
 	const TSharedPtr<IPropertyHandle> PropertyHandle = DetailBuilder->GetProperty(*GetPropertyPath(ComponentsProperty));
 	CheckCondition(PropertyHandle.IsValid(), return;);
 	CheckCondition(PropertyHandle->IsValidHandle(), return;);
-	
+
 	IDetailCategoryBuilder& ComponentsCategory = DetailBuilder->EditCategory(PropertyHandle->GetDefaultCategoryName());
 
 	const FSimpleDelegate OnComponentsChanged = FSimpleDelegate::CreateLambda(
@@ -65,7 +65,7 @@ void FComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayo
 			PropertyUtilities.Get().ForceRefresh();
 		}
 	});
-	
+
 	IDetailGroup& ComponentsGroup = GenerateContainerHeader(
 		PropertyHandle, ComponentsCategory, OnComponentsChanged);
 
@@ -79,7 +79,7 @@ void FComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayo
 			return MakeComboButton(WidgetPropertyHandle);
 		});
 	};
-	
+
 	GenerateWidgetForContainerContent<FSoftObjectProperty, UWidget>
 	(PropertyHandle, ComponentsGroup, Predicate, EContainerCombination::ContainerItself);
 }
@@ -87,8 +87,8 @@ void FComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayo
 TSharedRef<SWidget> FComponentBasedWidgetDetails::MakeComboButton(const TSharedPtr<IPropertyHandle> PropertyHandle)
 {
 	const TSharedPtr<SComboButton> ComboButton = SNew(SComboButton)
-		.ButtonStyle(FEditorStyle::Get(), AssetComboStyleName)
-		.ForegroundColor(FEditorStyle::GetColor(AssetNameColorName))
+		.ButtonStyle(FAppStyle::Get(), AssetComboStyleName)
+		.ForegroundColor(FAppStyle::GetColor(AssetNameColorName))
 		.ContentPadding(2.0f)
 		.IsEnabled(!PropertyHandle->IsEditConst())
 		.ButtonContent()
@@ -134,7 +134,7 @@ TSharedRef<SWidget> FComponentBasedWidgetDetails::GetPopupContent(const TSharedP
 		WidgetListView->SetSelection(GetCurrentValue<UWidget*>(ChildHandle, Result));
 
 		TSharedPtr<SSearchBox> SearchBox;
-		
+
 		const TSharedRef<SVerticalBox> MenuContent =
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
@@ -171,7 +171,7 @@ void FComponentBasedWidgetDetails::OnSelectionChanged(const TWeakObjectPtr<UWidg
 	{
 		// value should set successfully
 		CheckCondition(SetObjectValue(InItem.Get(), ChildHandle));
-		
+
 		WidgetListComboButton->SetIsOpen(false);
 	}
 }
@@ -214,11 +214,11 @@ void FComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText
 		{
 			return;
 		}
-		
+
 		const UClass* FilterWidgetClass = ObjectProperty->PropertyClass;
-			
+
 		ReferencableWidgets.Reset();
-			
+
 		for (UWidget* Widget : AllWidgets)
 		{
 			if (!Widget->IsA(FilterWidgetClass))
@@ -236,7 +236,7 @@ void FComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText
 				ReferencableWidgets.Add(Widget);
 			}
 		}
-		
+
 		WidgetListView->RequestListRefresh();
 	}
 }
