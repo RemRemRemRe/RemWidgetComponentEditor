@@ -20,7 +20,7 @@ public:
 	 *
 	 * @return Returns singleton instance, loading the module on demand if needed
 	 */
-	static FORCEINLINE IWidgetComponentEditorModule& Get()
+	static IWidgetComponentEditorModule& Get()
 	{
 		return FModuleManager::LoadModuleChecked< IWidgetComponentEditorModule >( "WidgetComponentEditor" );
 	}
@@ -30,7 +30,7 @@ public:
 	 *
 	 * @return True if the module is loaded and ready to use
 	 */
-	static FORCEINLINE bool IsAvailable()
+	static bool IsAvailable()
 	{
 		return FModuleManager::Get().IsModuleLoaded( "WidgetComponentEditor" );
 	}

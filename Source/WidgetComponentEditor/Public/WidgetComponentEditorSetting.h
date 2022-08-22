@@ -22,9 +22,9 @@ class WIDGETCOMPONENTEDITOR_API UWidgetComponentEditorSetting : public UDevelope
 #pragma endregion Data Members
 
 public:
-	FORCEINLINE TArray<TSoftClassPtr<UUserWidget>> GetWidgetClassToCustomize() const;
+	TArray<TSoftClassPtr<UUserWidget>> GetWidgetClassToCustomize() const;
 
-	FORCEINLINE void SetWidgetClassToCustomize(TArray<TSoftClassPtr<UUserWidget>> InWidgetClassToCustomize);
+	void SetWidgetClassToCustomize(TArray<TSoftClassPtr<UUserWidget>> InWidgetClassToCustomize);
 
 #if WITH_EDITOR
 
