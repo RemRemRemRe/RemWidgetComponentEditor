@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "DetailCustomizationUtilities.h"
 #include "IDetailCustomization.h"
 
