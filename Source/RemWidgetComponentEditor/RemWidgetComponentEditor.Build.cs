@@ -3,9 +3,9 @@
 
 namespace UnrealBuildTool.Rules
 {
-	public class WidgetComponentEditor : ModuleRules
+	public class RemWidgetComponentEditor : ModuleRules
 	{
-		public WidgetComponentEditor(ReadOnlyTargetRules target) : base(target)
+		public RemWidgetComponentEditor(ReadOnlyTargetRules target) : base(target)
 		{
 			PCHUsage					= PCHUsageMode.UseExplicitOrSharedPCHs;
 			bLegacyPublicIncludePaths	= false;
@@ -18,6 +18,7 @@ namespace UnrealBuildTool.Rules
 					"Core",
 					"CoreUObject",
 					"Engine",
+
 					"Slate",
 					"SlateCore",
 					"UMG",
@@ -25,10 +26,12 @@ namespace UnrealBuildTool.Rules
 					"UnrealEd",
 					"PropertyEditor",
 					"EditorStyle",
+
 					"DeveloperSettings",
-					"WidgetComponent",
-					"Common",
-					"DetailCustomizationUtilities",
+					
+					"RemWidgetComponent",
+					"RemCommon",
+					"RemEditorUtilities",
 				}
 			);
 		}

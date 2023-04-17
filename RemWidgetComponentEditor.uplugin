@@ -2,7 +2,7 @@
 	"FileVersion": 3,
 	"Version": 1,
 	"VersionName": "1.0",
-	"FriendlyName": "WidgetComponentEditor",
+	"FriendlyName": "RemWidgetComponentEditor",
 	"Description": "",
 	"Category": "Editor",
 	"CreatedBy": "RemRemRemRe",
@@ -18,22 +18,22 @@
 	"BuiltInInitialFeatureState": "Active",
 	"Modules": [
 		{
-			"Name": "WidgetComponentEditor",
+			"Name": "RemWidgetComponentEditor",
 			"Type": "UncookedOnly",
 			"LoadingPhase": "Default"
 		}
 	],
 	"Plugins": [
 		{
-			"Name": "WidgetComponent",
+			"Name": "RemWidgetComponent",
 			"Enabled": true
 		},
 		{
-			"Name": "Common",
+			"Name": "RemCommon",
 			"Enabled": true
 		},
 		{
-			"Name": "DetailCustomizationUtilities",
+			"Name": "RemEditorUtilities",
 			"Enabled": true
 		}
 	]

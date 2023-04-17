@@ -1,32 +1,30 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "ComponentBasedWidgetDetails.h"
+#include "RemComponentBasedWidgetDetails.h"
 
 #include "BaseWidgetBlueprint.h"
 #include "DetailCategoryBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
-#include "DetailCustomizationUtilities.h"
-#include "IDetailChildrenBuilder.h"
+#include "RemDetailCustomizationUtilities.h"
 #include "IDetailGroup.h"
 #include "IPropertyUtilities.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Widget.h"
 #include "Widgets/Input/SSearchBox.h"
-#include "Macro/AssertionMacros.h"
-#include "ObjectEditorUtils.h"
-#include "PropertyCustomizationHelpers.h"
-#include "WidgetComponentAsExtension.h"
+#include "Macro/RemAssertionMacros.h"
+#include "RemWidgetComponentAsExtension.h"
+#include "Enum/RemContainerCombination.h"
 
 #define LOCTEXT_NAMESPACE "ComponentBasedWidget"
 
-TSharedRef<IDetailCustomization> FComponentBasedWidgetDetails::MakeInstance()
+TSharedRef<IDetailCustomization> FRemComponentBasedWidgetDetails::MakeInstance()
 {
-	return MakeShared<FComponentBasedWidgetDetails>();
+	return MakeShared<FRemComponentBasedWidgetDetails>();
 }
 
-void FComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayoutBuilder>& DetailBuilder)
+void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayoutBuilder>& DetailBuilder)
 {
 	IDetailCustomization::CustomizeDetails(DetailBuilder);
 
@@ -70,11 +68,11 @@ void FComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayo
 		PropertyHandle, ComponentsCategory, OnComponentsChanged);
 
 	const FPropertyCustomizationFunctor Predicate =
-	[this] (const TSharedPtr<IPropertyHandle> Handle, FDetailWidgetRow& WidgetPropertyRow,
+	[this] (const TSharedPtr<IPropertyHandle>& Handle, FDetailWidgetRow& WidgetPropertyRow,
 		const EContainerCombination MemberContainerType)
 	{
 		MakeCustomWidgetForProperty(Handle, WidgetPropertyRow, MemberContainerType,
-		[this] (const TSharedPtr<IPropertyHandle> WidgetPropertyHandle)
+		[this] (const TSharedPtr<IPropertyHandle>& WidgetPropertyHandle)
 		{
 			return MakeComboButton(WidgetPropertyHandle);
 		});
@@ -84,7 +82,7 @@ void FComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayo
 	(PropertyHandle, ComponentsGroup, Predicate, EContainerCombination::ContainerItself);
 }
 
-TSharedRef<SWidget> FComponentBasedWidgetDetails::MakeComboButton(const TSharedPtr<IPropertyHandle> PropertyHandle)
+TSharedRef<SWidget> FRemComponentBasedWidgetDetails::MakeComboButton(const TSharedPtr<IPropertyHandle>& PropertyHandle)
 {
 	const TSharedPtr<SComboButton> ComboButton = SNew(SComboButton)
 		.ButtonStyle(FAppStyle::Get(), AssetComboStyleName)
@@ -106,13 +104,15 @@ TSharedRef<SWidget> FComponentBasedWidgetDetails::MakeComboButton(const TSharedP
 		];
 
 	ComboButton->SetOnGetMenuContent(FOnGetContent::CreateSP(
-		this, &FComponentBasedWidgetDetails::GetPopupContent, PropertyHandle, ComboButton));
+		this, &FRemComponentBasedWidgetDetails::GetPopupContent, PropertyHandle, ComboButton));
 
 	return ComboButton.ToSharedRef();
 }
 
-TSharedRef<SWidget> FComponentBasedWidgetDetails::GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle,
+// ReSharper disable CppPassValueParameterByConstReference
+TSharedRef<SWidget> FRemComponentBasedWidgetDetails::GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle,
 	const TSharedPtr<SComboButton> WidgetListComboButton)
+// ReSharper restore CppPassValueParameterByConstReference
 {
 	constexpr bool bInShouldCloseWindowAfterMenuSelection = true;
 	constexpr bool bCloseSelfOnly = true;
@@ -123,8 +123,8 @@ TSharedRef<SWidget> FComponentBasedWidgetDetails::GetPopupContent(const TSharedP
 		const TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView =
 		SNew(SListView<TWeakObjectPtr<UWidget>>)
 			.ListItemsSource(&ReferencableWidgets)
-			.OnSelectionChanged(this, &FComponentBasedWidgetDetails::OnSelectionChanged, ChildHandle, WidgetListComboButton)
-			.OnGenerateRow(this, &FComponentBasedWidgetDetails::OnGenerateListItem)
+			.OnSelectionChanged(this, &FRemComponentBasedWidgetDetails::OnSelectionChanged, ChildHandle, WidgetListComboButton)
+			.OnGenerateRow(this, &FRemComponentBasedWidgetDetails::OnGenerateListItem)
 			.SelectionMode(ESelectionMode::Single);
 
 		// Ensure no filter is applied at the time the menu opens
@@ -141,7 +141,7 @@ TSharedRef<SWidget> FComponentBasedWidgetDetails::GetPopupContent(const TSharedP
 			.AutoHeight()
 			[
 				SAssignNew(SearchBox, SSearchBox)
-				.OnTextChanged(this, &FComponentBasedWidgetDetails::OnFilterTextChanged, ChildHandle, WidgetListView)
+				.OnTextChanged(this, &FRemComponentBasedWidgetDetails::OnFilterTextChanged, ChildHandle, WidgetListView)
 			]
 
 			+ SVerticalBox::Slot()
@@ -164,8 +164,10 @@ TSharedRef<SWidget> FComponentBasedWidgetDetails::GetPopupContent(const TSharedP
 	return MenuBuilder.MakeWidget();
 }
 
-void FComponentBasedWidgetDetails::OnSelectionChanged(const TWeakObjectPtr<UWidget> InItem, const ESelectInfo::Type SelectionInfo,
+// ReSharper disable CppPassValueParameterByConstReference
+void FRemComponentBasedWidgetDetails::OnSelectionChanged(const TWeakObjectPtr<UWidget> InItem, const ESelectInfo::Type SelectionInfo,
 	const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SComboButton> WidgetListComboButton) const
+// ReSharper restore CppPassValueParameterByConstReference
 {
 	if (SelectionInfo != ESelectInfo::Direct)
 	{
@@ -176,7 +178,7 @@ void FComponentBasedWidgetDetails::OnSelectionChanged(const TWeakObjectPtr<UWidg
 	}
 }
 
-TSharedRef<ITableRow> FComponentBasedWidgetDetails::OnGenerateListItem(const TWeakObjectPtr<UWidget> InItem,
+TSharedRef<ITableRow> FRemComponentBasedWidgetDetails::OnGenerateListItem(const TWeakObjectPtr<UWidget> InItem,
                                                                        const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	if (const UWidget* Widget = InItem.Get())
@@ -193,8 +195,10 @@ TSharedRef<ITableRow> FComponentBasedWidgetDetails::OnGenerateListItem(const TWe
 	return SNew(STableRow<TWeakObjectPtr<UWidget>>, OwnerTable);
 }
 
-void FComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText,
+// ReSharper disable CppPassValueParameterByConstReference
+void FRemComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText,
 	const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView)
+// ReSharper restore CppPassValueParameterByConstReference
 {
 	if (ChildHandle.IsValid() && WidgetBlueprintGeneratedClass.IsValid())
 	{

@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "DetailCustomizationUtilities.h"
+#include "RemDetailCustomizationUtilities.h"
 #include "IDetailCustomization.h"
 
 class UBaseWidgetBlueprint;
@@ -11,12 +11,12 @@ class UWidget;
 class IDetailLayoutBuilder;
 class IPropertyHandle;
 
-using namespace DetailCustomizationUtilities;
+using namespace Rem::DetailCustomizationUtilities;
 
 /**
  * Detail customization for any user widget with UWidgetComponentAsExtension component
  */
-class WIDGETCOMPONENTEDITOR_API FComponentBasedWidgetDetails : public IDetailCustomization
+class REMWIDGETCOMPONENTEDITOR_API FRemComponentBasedWidgetDetails : public IDetailCustomization
 {
 #pragma region Data Members
 
@@ -34,10 +34,10 @@ public:
 	virtual void CustomizeDetails( const TSharedPtr<IDetailLayoutBuilder>& DetailBuilder ) override;
 
 protected:
-	virtual TSharedRef<SWidget> MakeComboButton(TSharedPtr<IPropertyHandle> PropertyHandle);
+	virtual TSharedRef<SWidget> MakeComboButton(const TSharedPtr<IPropertyHandle>& PropertyHandle);
 
-	virtual TSharedRef<SWidget> GetPopupContent(TSharedPtr<IPropertyHandle> ChildHandle,
-		TSharedPtr<SComboButton> WidgetListComboButton);
+	virtual TSharedRef<SWidget> GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle,
+	                                            const TSharedPtr<SComboButton> WidgetListComboButton);
 
 	virtual void OnSelectionChanged(TWeakObjectPtr<UWidget> InItem, ESelectInfo::Type SelectionInfo,
 		TSharedPtr<IPropertyHandle> ChildHandle, TSharedPtr<SComboButton> WidgetListComboButton) const;
@@ -45,6 +45,6 @@ protected:
 	virtual TSharedRef<ITableRow> OnGenerateListItem(TWeakObjectPtr<UWidget> InItem,
 											const TSharedRef<STableViewBase>& OwnerTable) const;
 
-	virtual void OnFilterTextChanged(const FText& InFilterText, TSharedPtr<IPropertyHandle> ChildHandle,
-		TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView);
+	virtual void OnFilterTextChanged(const FText& InFilterText, const TSharedPtr<IPropertyHandle> ChildHandle,
+	                                 const TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView);
 };

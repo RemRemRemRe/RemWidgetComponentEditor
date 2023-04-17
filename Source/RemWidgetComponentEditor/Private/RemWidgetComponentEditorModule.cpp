@@ -1,18 +1,18 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "WidgetComponentEditorModule.h"
+#include "RemWidgetComponentEditorModule.h"
 
 #include "BaseWidgetBlueprint.h"
-#include "ComponentBasedWidgetDetails.h"
-#include "WidgetComponentAsExtension.h"
-#include "WidgetComponentBase.h"
-#include "WidgetComponentEditorSetting.h"
-#include "WidgetComponentStatics.h"
+#include "RemComponentBasedWidgetDetails.h"
+#include "RemWidgetComponentAsExtension.h"
+#include "RemWidgetComponentBase.h"
+#include "RemWidgetComponentEditorSetting.h"
+#include "RemWidgetComponentStatics.h"
 #include "Blueprint/UserWidget.h"
-#include "Macro/AssertionMacros.h"
+#include "Macro/RemAssertionMacros.h"
 #include "Blueprint/WidgetTree.h"
 
-class FWidgetComponentEditorModule : public IWidgetComponentEditorModule
+class FRemWidgetComponentEditorModule : public IRemWidgetComponentEditorModule
 {
 	TArray<FName> RegisteredClasses;
 
@@ -40,20 +40,20 @@ protected:
 	FDelegateHandle OnObjectReplacedHandle;
 };
 
-IMPLEMENT_MODULE(FWidgetComponentEditorModule, WidgetComponentEditor)
+IMPLEMENT_MODULE(FRemWidgetComponentEditorModule, RemWidgetComponentEditor)
 
-void FWidgetComponentEditorModule::StartupModule()
+void FRemWidgetComponentEditorModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory (but after global variables are initialized, of course.)
-	IWidgetComponentEditorModule::StartupModule();
+	IRemWidgetComponentEditorModule::StartupModule();
 	
 	RegisterCustomization();
 	
-	OnObjectReplacedHandle = FCoreUObjectDelegates::OnObjectsReplaced.AddRaw(this, &FWidgetComponentEditorModule::OnObjectReplaced);
-	ObjectModifiedHandle = FCoreUObjectDelegates::OnObjectModified.AddRaw(this, &FWidgetComponentEditorModule::OnObjectModified);
+	OnObjectReplacedHandle = FCoreUObjectDelegates::OnObjectsReplaced.AddRaw(this, &FRemWidgetComponentEditorModule::OnObjectReplaced);
+	ObjectModifiedHandle = FCoreUObjectDelegates::OnObjectModified.AddRaw(this, &FRemWidgetComponentEditorModule::OnObjectModified);
 }
 
-void FWidgetComponentEditorModule::ShutdownModule()
+void FRemWidgetComponentEditorModule::ShutdownModule()
 {
 	FCoreUObjectDelegates::OnObjectModified.Remove(ObjectModifiedHandle);
 	FCoreUObjectDelegates::OnObjectsReplaced.Remove(OnObjectReplacedHandle);
@@ -62,17 +62,17 @@ void FWidgetComponentEditorModule::ShutdownModule()
 	
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
-	IWidgetComponentEditorModule::ShutdownModule();
+	IRemWidgetComponentEditorModule::ShutdownModule();
 }
 
-void FWidgetComponentEditorModule::RegisterCustomization()
+void FRemWidgetComponentEditorModule::RegisterCustomization()
 {
 	// Register customizations
 	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 
 	bool bSignificantlyChanged = false;
-	UWidgetComponentEditorSetting* WidgetComponentEditorSetting = GetMutableDefault<UWidgetComponentEditorSetting>();
-	for (const TSoftClassPtr<UUserWidget> Class : WidgetComponentEditorSetting->GetWidgetClassToCustomize())
+	URemWidgetComponentEditorSetting* RemWidgetComponentEditorSetting = GetMutableDefault<URemWidgetComponentEditorSetting>();
+	for (const TSoftClassPtr<UUserWidget> Class : RemWidgetComponentEditorSetting->GetWidgetClassToCustomize())
 	{
 		if (Class.IsNull())
 		{
@@ -82,7 +82,7 @@ void FWidgetComponentEditorModule::RegisterCustomization()
 		const FName& AssetName = RegisteredClasses.Add_GetRef(*Class.GetAssetName());
 		
 		PropertyModule.RegisterCustomClassLayout(AssetName,
-			FOnGetDetailCustomizationInstance::CreateStatic(&FComponentBasedWidgetDetails::MakeInstance));
+			FOnGetDetailCustomizationInstance::CreateStatic(&FRemComponentBasedWidgetDetails::MakeInstance));
 
 		bSignificantlyChanged = true;
 	}
@@ -94,12 +94,12 @@ void FWidgetComponentEditorModule::RegisterCustomization()
 
 	if (!SettingChangedHandle.IsValid())
 	{
-		SettingChangedHandle = WidgetComponentEditorSetting->OnSettingChanged().AddRaw(
-			this, &FWidgetComponentEditorModule::OnSettingChanged);
+		SettingChangedHandle = RemWidgetComponentEditorSetting->OnSettingChanged().AddRaw(
+			this, &FRemWidgetComponentEditorModule::OnSettingChanged);
 	}
 }
 
-void FWidgetComponentEditorModule::UnregisterCustomization()
+void FRemWidgetComponentEditorModule::UnregisterCustomization()
 {
 	// Unregister customizations
 	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
@@ -118,7 +118,8 @@ void FWidgetComponentEditorModule::UnregisterCustomization()
 	}
 }
 
-void FWidgetComponentEditorModule::OnSettingChanged(UObject* Settings, FPropertyChangedEvent&)
+// ReSharper disable once CppParameterMayBeConstPtrOrRef
+void FRemWidgetComponentEditorModule::OnSettingChanged(UObject* Settings, FPropertyChangedEvent&)
 {
 	if (Settings)
 	{
@@ -128,13 +129,13 @@ void FWidgetComponentEditorModule::OnSettingChanged(UObject* Settings, FProperty
 	}
 }
 
-static FAutoConsoleVariable CVarWidgetComponentEditorFixIncorrectComponentClass(
-	TEXT("WidgetComponentEditor.FixIncorrectComponentClass"), true,
+static FAutoConsoleVariable CVarRemWidgetComponentEditorFixIncorrectComponentClass(
+	TEXT("RemWidgetComponentEditor.FixIncorrectComponentClass"), true,
 		TEXT("Trying to fix incorrect component class when component blueprint recompiled."));
 
-void FWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObject*>& ReplacementObjectMap) const
+void FRemWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObject*>& ReplacementObjectMap) const
 {
-	if (!CVarWidgetComponentEditorFixIncorrectComponentClass->GetBool())
+	if (!CVarRemWidgetComponentEditorFixIncorrectComponentClass->GetBool())
 	{
 		return;
 	}
@@ -177,7 +178,7 @@ void FWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObject
 			continue;
 		}
 			
-		WidgetComponentStatics::ForeachUserWidgetComponent(Extension,
+		Rem::WidgetComponent::ForeachUserWidgetComponent(Extension,
 [&](UWidgetComponentBase** MemberPtr, int32)
 		{
 			CheckPointer(MemberPtr, return);
@@ -216,13 +217,13 @@ void FWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObject
 	}
 }
 
-static FAutoConsoleVariable CVarWidgetComponentEditorFixSoftObjectNotUpdated(
-	TEXT("WidgetComponentEditor.FixSoftObjectNotUpdated"), true,
+static FAutoConsoleVariable CVarRemWidgetComponentEditorFixSoftObjectNotUpdated(
+	TEXT("RemWidgetComponentEditor.FixSoftObjectNotUpdated"), true,
 		TEXT("Trying to fix soft object reference did not get updated after the widget get renamed."));
 
-void FWidgetComponentEditorModule::OnObjectModified(UObject* Object)
+void FRemWidgetComponentEditorModule::OnObjectModified(UObject* Object)
 {
-	if (!CVarWidgetComponentEditorFixSoftObjectNotUpdated->GetBool())
+	if (!CVarRemWidgetComponentEditorFixSoftObjectNotUpdated->GetBool())
 	{
 		return;
 	}
@@ -272,7 +273,7 @@ void FWidgetComponentEditorModule::OnObjectModified(UObject* Object)
 			{
 				PreviewWidget->GetWorld()->GetTimerManager().SetTimerForNextTick(
 					FTimerDelegate::CreateRaw(
-						this, &FWidgetComponentEditorModule::UpdateSoftObjects, WidgetBlueprint));
+						this, &FRemWidgetComponentEditorModule::UpdateSoftObjects, WidgetBlueprint));
 			}
 		}
 		
@@ -281,19 +282,19 @@ void FWidgetComponentEditorModule::OnObjectModified(UObject* Object)
 	}
 }
 
-void FWidgetComponentEditorModule::UpdateSoftObjects(const TWeakObjectPtr<const UBaseWidgetBlueprint> InWidgetBlueprint) const
+void FRemWidgetComponentEditorModule::UpdateSoftObjects(const TWeakObjectPtr<const UBaseWidgetBlueprint> InWidgetBlueprint) const
 {
 	CheckCondition(InWidgetBlueprint.IsValid(), return;);
 	
 	const UUserWidget* DefaultObject = Cast<UUserWidget>(InWidgetBlueprint->GeneratedClass->GetDefaultObject(false));
 			
-	WidgetComponentStatics::ForeachUserWidgetComponent(DefaultObject,
+	Rem::WidgetComponent::ForeachUserWidgetComponent(DefaultObject,
 	[&](UWidgetComponentBase** ObjectMemberPtr, int32)
 	{
 		UWidgetComponentBase* ComponentBase = *ObjectMemberPtr;
 		CheckPointer(ComponentBase, return);
 
-		Common::PropertyHelper::IteratePropertiesOfType<FSoftObjectProperty>(ComponentBase->GetClass(), ComponentBase,
+		Rem::Common::PropertyHelper::IteratePropertiesOfType<FSoftObjectProperty>(ComponentBase->GetClass(), ComponentBase,
 		[&] (const FProperty* InProperty, const void* InContainer, int32,
 		const FString&, const FString&, const FString&, int32, int32)
 		{
@@ -310,7 +311,7 @@ void FWidgetComponentEditorModule::UpdateSoftObjects(const TWeakObjectPtr<const 
 
 			// refresh soft object reference if name is out dated
 			if (const UObject* SoftObject = SoftObjectPtr->Get();
-				SoftObject && SoftObject->GetFName() != FName(*Common::GetObjectNameFromSoftObjectPath(SoftObjectPtr->ToSoftObjectPath())))
+				SoftObject && SoftObject->GetFName() != FName(*Rem::Common::GetObjectNameFromSoftObjectPath(SoftObjectPtr->ToSoftObjectPath())))
 			{
 				ComponentBase->Modify();
 				*SoftObjectPtr = SoftObject;

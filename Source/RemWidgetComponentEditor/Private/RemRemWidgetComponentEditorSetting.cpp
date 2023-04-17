@@ -1,28 +1,28 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "WidgetComponentEditorSetting.h"
+#include "RemWidgetComponentEditorSetting.h"
 
 #include "Blueprint/UserWidget.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
-#define LOCTEXT_NAMESPACE "WidgetComponentEditorSetting"
+#define LOCTEXT_NAMESPACE "RemWidgetComponentEditorSetting"
 
-TArray<TSoftClassPtr<UUserWidget>> UWidgetComponentEditorSetting::GetWidgetClassToCustomize() const
+TArray<TSoftClassPtr<UUserWidget>> URemWidgetComponentEditorSetting::GetWidgetClassToCustomize() const
 {
 	return WidgetClassToCustomize;
 }
 
-void UWidgetComponentEditorSetting::SetWidgetClassToCustomize(
-	const TArray<TSoftClassPtr<UUserWidget>> InWidgetClassToCustomize)
+void URemWidgetComponentEditorSetting::SetWidgetClassToCustomize(
+	const TArray<TSoftClassPtr<UUserWidget>>& InWidgetClassToCustomize)
 {
 	WidgetClassToCustomize = InWidgetClassToCustomize;
 }
 
 #if WITH_EDITOR
 
-void UWidgetComponentEditorSetting::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+void URemWidgetComponentEditorSetting::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	if (!RemoveBlueprintClasses())
 	{
@@ -41,7 +41,7 @@ void UWidgetComponentEditorSetting::PostEditChangeProperty(FPropertyChangedEvent
 	}
 }
 
-bool UWidgetComponentEditorSetting::RemoveBlueprintClasses()
+bool URemWidgetComponentEditorSetting::RemoveBlueprintClasses()
 {
 	bool bFoundBlueprintClass = false;
 		

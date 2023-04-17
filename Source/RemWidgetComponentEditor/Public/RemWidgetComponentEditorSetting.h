@@ -3,13 +3,13 @@
 #pragma once
 
 #include "Engine/DeveloperSettings.h"
-#include "WidgetComponentEditorSetting.generated.h"
+#include "RemWidgetComponentEditorSetting.generated.h"
 
 /**
  * Directly configure whatever number of `UUserWidget` classes to turn detail customization on dynamically
  */
 UCLASS(config = Editor, defaultconfig, notplaceable, BlueprintType)
-class WIDGETCOMPONENTEDITOR_API UWidgetComponentEditorSetting : public UDeveloperSettings
+class REMWIDGETCOMPONENTEDITOR_API URemWidgetComponentEditorSetting : public UDeveloperSettings
 {
 	GENERATED_BODY()
 
@@ -23,7 +23,7 @@ class WIDGETCOMPONENTEDITOR_API UWidgetComponentEditorSetting : public UDevelope
 public:
 	TArray<TSoftClassPtr<UUserWidget>> GetWidgetClassToCustomize() const;
 
-	void SetWidgetClassToCustomize(TArray<TSoftClassPtr<UUserWidget>> InWidgetClassToCustomize);
+	void SetWidgetClassToCustomize(const TArray<TSoftClassPtr<UUserWidget>>& InWidgetClassToCustomize);
 
 #if WITH_EDITOR
 
