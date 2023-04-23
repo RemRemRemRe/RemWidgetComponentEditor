@@ -14,7 +14,7 @@ class IPropertyHandle;
 using namespace Rem::DetailCustomizationUtilities;
 
 /**
- * Detail customization for any user widget with UWidgetComponentAsExtension component
+ * Detail customization for any user widget with URemWidgetComponentAsExtension component
  */
 class REMWIDGETCOMPONENTEDITOR_API FRemComponentBasedWidgetDetails : public IDetailCustomization
 {

@@ -141,7 +141,7 @@ void FRemWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObj
 	}
 	
 	TArray<UObject*> Components;
-	GetObjectsOfClass(UWidgetComponentBase::StaticClass(), Components,
+	GetObjectsOfClass(URemWidgetComponentBase::StaticClass(), Components,
 		true);
 
 	for (const UObject* Object : Components)
@@ -172,19 +172,19 @@ void FRemWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObj
 		// Remove all nullptr from UUserWidget::Extensions
 		OwnerWidgetCDO->RemoveExtension(nullptr);
 		
-		const UWidgetComponentAsExtension* Extension = OwnerWidgetCDO->GetExtension<UWidgetComponentAsExtension>();
+		const URemWidgetComponentAsExtension* Extension = OwnerWidgetCDO->GetExtension<URemWidgetComponentAsExtension>();
 		if (!Extension)
 		{
 			continue;
 		}
 			
 		Rem::WidgetComponent::ForeachUserWidgetComponent(Extension,
-[&](UWidgetComponentBase** MemberPtr, int32)
+[&](URemWidgetComponentBase** MemberPtr, int32)
 		{
-			CheckPointer(MemberPtr, return);
-			UWidgetComponentBase* OldObject = *MemberPtr;
+			RemCheckVariable(MemberPtr, return);
+			URemWidgetComponentBase* OldObject = *MemberPtr;
 		
-			CheckPointer(OldObject, return);
+			RemCheckVariable(OldObject, return);
 
 			if (const UObject* const* ReplacementClassPtr =  ReplacementObjectMap.Find(OldObject->GetClass()))
 			{
@@ -195,7 +195,7 @@ void FRemWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObj
 					OldObject->Rename(nullptr, GetTransientPackage(),
 				REN_DoNotDirty | REN_DontCreateRedirectors | REN_ForceNoResetLoaders);
 					
-					UWidgetComponentBase* NewComponent = NewObject<UWidgetComponentBase>(OwnerWidgetCDO,
+					URemWidgetComponentBase* NewComponent = NewObject<URemWidgetComponentBase>(OwnerWidgetCDO,
 						ReplacementClass, SavedName);
 						
 					OwnerWidgetCDO->Modify();
@@ -269,7 +269,7 @@ void FRemWidgetComponentEditorModule::OnObjectModified(UObject* Object)
 		{
 			// make sure it is a component based widget
 			if (const UUserWidget* OuterWidget = Cast<UUserWidget>(PreviewWidget->GetOuter()->GetOuter());
-				OuterWidget && OuterWidget->GetExtension<UWidgetComponentAsExtension>())
+				OuterWidget && OuterWidget->GetExtension<URemWidgetComponentAsExtension>())
 			{
 				PreviewWidget->GetWorld()->GetTimerManager().SetTimerForNextTick(
 					FTimerDelegate::CreateRaw(
@@ -284,25 +284,25 @@ void FRemWidgetComponentEditorModule::OnObjectModified(UObject* Object)
 
 void FRemWidgetComponentEditorModule::UpdateSoftObjects(const TWeakObjectPtr<const UBaseWidgetBlueprint> InWidgetBlueprint) const
 {
-	CheckCondition(InWidgetBlueprint.IsValid(), return;);
+	RemCheckCondition(InWidgetBlueprint.IsValid(), return;);
 	
 	const UUserWidget* DefaultObject = Cast<UUserWidget>(InWidgetBlueprint->GeneratedClass->GetDefaultObject(false));
 			
 	Rem::WidgetComponent::ForeachUserWidgetComponent(DefaultObject,
-	[&](UWidgetComponentBase** ObjectMemberPtr, int32)
+	[&](URemWidgetComponentBase** ObjectMemberPtr, int32)
 	{
-		UWidgetComponentBase* ComponentBase = *ObjectMemberPtr;
-		CheckPointer(ComponentBase, return);
+		URemWidgetComponentBase* ComponentBase = *ObjectMemberPtr;
+		RemCheckVariable(ComponentBase, return);
 
 		Rem::Common::PropertyHelper::IteratePropertiesOfType<FSoftObjectProperty>(ComponentBase->GetClass(), ComponentBase,
 		[&] (const FProperty* InProperty, const void* InContainer, int32,
 		const FString&, const FString&, const FString&, int32, int32)
 		{
 			const FSoftObjectProperty* SoftObjectProperty = CastField<FSoftObjectProperty>(const_cast<FProperty*>(InProperty));
-			CheckPointer(SoftObjectProperty, return);
+			RemCheckVariable(SoftObjectProperty, return);
 					
 			FSoftObjectPtr* SoftObjectPtr = SoftObjectProperty->GetPropertyValuePtr_InContainer(const_cast<void*>(InContainer));
-			CheckPointer(SoftObjectPtr, return);
+			RemCheckVariable(SoftObjectPtr, return);
 
 			if (SoftObjectPtr->IsNull())
 			{

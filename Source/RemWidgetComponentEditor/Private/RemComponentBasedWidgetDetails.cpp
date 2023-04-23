@@ -30,27 +30,27 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 
 	TArray< TWeakObjectPtr<UObject> > ObjectsBeingCustomized;
 	DetailBuilder->GetObjectsBeingCustomized(ObjectsBeingCustomized);
-	CheckCondition(ObjectsBeingCustomized.Num() > 0, return;);
+	RemCheckCondition(ObjectsBeingCustomized.Num() > 0, return;);
 
 	UUserWidget* WidgetObject = Cast<UUserWidget>(ObjectsBeingCustomized[0].Get());
-	CheckPointer(WidgetObject, return;);
+	RemCheckVariable(WidgetObject, return;);
 
-	const UWidgetComponentAsExtension* Extension = WidgetObject->GetExtension<UWidgetComponentAsExtension>();
+	const URemWidgetComponentAsExtension* Extension = WidgetObject->GetExtension<URemWidgetComponentAsExtension>();
 	if (!Extension)
 	{
 		return;
 	}
 
 	FArrayProperty* ComponentsProperty = Extension->GetComponentsProperty();
-	CheckPointer(ComponentsProperty, return;);
+	RemCheckVariable(ComponentsProperty, return;);
 
 	// cache widget blueprint class
 	WidgetBlueprintGeneratedClass = Cast<UWidgetBlueprintGeneratedClass>(DetailBuilder->GetBaseClass());
 
 	// generate array header widget
 	const TSharedPtr<IPropertyHandle> PropertyHandle = DetailBuilder->GetProperty(*GetPropertyPath(ComponentsProperty));
-	CheckCondition(PropertyHandle.IsValid(), return;);
-	CheckCondition(PropertyHandle->IsValidHandle(), return;);
+	RemCheckCondition(PropertyHandle.IsValid(), return;);
+	RemCheckCondition(PropertyHandle->IsValidHandle(), return;);
 
 	IDetailCategoryBuilder& ComponentsCategory = DetailBuilder->EditCategory(PropertyHandle->GetDefaultCategoryName());
 
@@ -172,7 +172,7 @@ void FRemComponentBasedWidgetDetails::OnSelectionChanged(const TWeakObjectPtr<UW
 	if (SelectionInfo != ESelectInfo::Direct)
 	{
 		// value should set successfully
-		CheckCondition(SetObjectValue(InItem.Get(), ChildHandle));
+		RemCheckCondition(SetObjectValue(InItem.Get(), ChildHandle));
 
 		WidgetListComboButton->SetIsOpen(false);
 	}
