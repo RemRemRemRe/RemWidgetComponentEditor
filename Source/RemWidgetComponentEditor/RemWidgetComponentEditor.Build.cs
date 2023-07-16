@@ -25,10 +25,12 @@ namespace UnrealBuildTool.Rules
 					"Slate",
 					"SlateCore",
 					"UMG",
+					"UMGEditor",
 					"InputCore",
 					"UnrealEd",
 					"PropertyEditor",
 					"EditorStyle",
+					"Kismet",
 
 					"DeveloperSettings",
 					

@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "RemComponentBasedWidgetDetails.h"
@@ -8,14 +8,14 @@
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
 #include "RemDetailCustomizationUtilities.h"
-#include "IPropertyUtilities.h"
+#include "RemWidgetComponentAsExtension.h"
+#include "WidgetBlueprintEditor.h"
+#include "Blueprint/WidgetBlueprintGeneratedClass.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Widget.h"
-#include "Widgets/Input/SSearchBox.h"
-#include "Macro/RemAssertionMacros.h"
-#include "RemWidgetComponentAsExtension.h"
-#include "Blueprint/WidgetBlueprintGeneratedClass.h"
 #include "Enum/RemContainerCombination.h"
+#include "Macro/RemAssertionMacros.h"
+#include "Widgets/Input/SSearchBox.h"
 
 #define LOCTEXT_NAMESPACE "ComponentBasedWidget"
 
@@ -32,9 +32,11 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 	DetailBuilder->GetObjectsBeingCustomized(ObjectsBeingCustomized);
 	RemCheckCondition(ObjectsBeingCustomized.Num() > 0, return;);
 
-	UUserWidget* WidgetObject = Cast<UUserWidget>(ObjectsBeingCustomized[0].Get());
+	auto* WidgetObject = Cast<UUserWidget>(ObjectsBeingCustomized[0].Get());
 	RemCheckVariable(WidgetObject, return;);
 
+	WidgetBlueprintEditor = GetAssetEditorInstance<FWidgetBlueprintEditor>(WidgetObject->GetClass());
+	
 	const URemWidgetComponentAsExtension* Extension = WidgetObject->GetExtension<URemWidgetComponentAsExtension>();
 	if (!Extension)
 	{
@@ -55,13 +57,13 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 	IDetailCategoryBuilder& ComponentsCategory = DetailBuilder->EditCategory(PropertyHandle->GetDefaultCategoryName());
 
 	const FSimpleDelegate OnComponentsChanged = FSimpleDelegate::CreateLambda(
-		[DetailBuilderWeakPtr = TWeakPtr<IDetailLayoutBuilder>(DetailBuilder)]
+		[WidgetObject, This{this}]
 	{
-		if (DetailBuilderWeakPtr.IsValid())
+		WidgetObject->GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(WidgetObject, [This, WidgetObject]
 		{
-			const TSharedRef< class IPropertyUtilities > PropertyUtilities = DetailBuilderWeakPtr.Pin()->GetPropertyUtilities();
-			PropertyUtilities.Get().ForceRefresh();
-		}
+			This->WidgetBlueprintEditor->RefreshPreview();
+			This->WidgetBlueprintEditor->SelectObjects({This->WidgetBlueprintEditor->GetPreview()});
+		}));
 	});
 
 	IDetailGroup& ComponentsGroup = GenerateContainerHeader(

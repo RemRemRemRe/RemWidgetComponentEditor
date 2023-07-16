@@ -5,6 +5,7 @@
 #include "RemDetailCustomizationUtilities.h"
 #include "IDetailCustomization.h"
 
+class FWidgetBlueprintEditor;
 class UBaseWidgetBlueprint;
 class UWidgetBlueprintGeneratedClass;
 class UWidget;
@@ -23,6 +24,8 @@ class REMWIDGETCOMPONENTEDITOR_API FRemComponentBasedWidgetDetails : public IDet
 	TArray<TWeakObjectPtr<UWidget>> ReferencableWidgets;
 
 	TWeakObjectPtr<UWidgetBlueprintGeneratedClass> WidgetBlueprintGeneratedClass;
+
+	FWidgetBlueprintEditor* WidgetBlueprintEditor{};
 
 #pragma endregion Data Members
 
