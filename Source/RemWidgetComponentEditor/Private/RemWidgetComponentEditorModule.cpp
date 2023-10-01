@@ -11,6 +11,8 @@
 #include "Blueprint/UserWidget.h"
 #include "Macro/RemAssertionMacros.h"
 #include "Blueprint/WidgetTree.h"
+#include "Templates/RemIteratePropertiesOfType.h"
+#include "InstancedStruct.h"
 
 class FRemWidgetComponentEditorModule : public IRemWidgetComponentEditorModule
 {
@@ -294,7 +296,7 @@ void FRemWidgetComponentEditorModule::UpdateSoftObjects(const TWeakObjectPtr<con
 		URemWidgetComponentBase* ComponentBase = *ObjectMemberPtr;
 		RemCheckVariable(ComponentBase, return);
 
-		Rem::Common::PropertyHelper::IteratePropertiesOfType<FSoftObjectProperty>(ComponentBase->GetClass(), ComponentBase,
+		Rem::Common::PropertyHelper::IteratePropertiesOfType<FSoftObjectProperty, FInstancedStruct>(ComponentBase->GetClass(), ComponentBase,
 		[&] (const FProperty* InProperty, const void* InContainer, int32,
 		const FString&, const FString&, const FString&, int32, int32)
 		{

@@ -35,6 +35,10 @@
 		{
 			"Name": "RemEditorUtilities",
 			"Enabled": true
+		},
+		{
+			"Name": "StructUtils",
+			"Enabled": true
 		}
 	]
 }

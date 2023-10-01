@@ -14,6 +14,7 @@ namespace UnrealBuildTool.Rules
 			CppStandard = CppStandardVersion.Cpp20;
 
 			bEnableNonInlinedGenCppWarnings = true;
+			bUseUnity = false;
 
 			PrivateDependencyModuleNames.AddRange(
 				new[]
@@ -31,6 +32,7 @@ namespace UnrealBuildTool.Rules
 					"PropertyEditor",
 					"EditorStyle",
 					"Kismet",
+					"StructUtils",
 
 					"DeveloperSettings",
 					
