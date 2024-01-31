@@ -12,7 +12,7 @@ class UWidget;
 class IDetailLayoutBuilder;
 class IPropertyHandle;
 
-using namespace Rem::DetailCustomizationUtilities;
+using namespace Rem::Editor;
 
 /**
  * Detail customization for any user widget with URemWidgetComponentAsExtension component

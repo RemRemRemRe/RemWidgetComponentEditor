@@ -296,14 +296,13 @@ void FRemWidgetComponentEditorModule::UpdateSoftObjects(const TWeakObjectPtr<con
 		URemWidgetComponentBase* ComponentBase = *ObjectMemberPtr;
 		RemCheckVariable(ComponentBase, return);
 
-		Rem::Common::PropertyHelper::IteratePropertiesOfType<FSoftObjectProperty, FInstancedStruct>(ComponentBase->GetClass(), ComponentBase,
-		[&] (const FProperty* InProperty, const void* InContainer, int32,
-		const FString&, const FString&, const FString&, int32, int32)
+		Rem::Property::IteratePropertiesOfType<FSoftObjectProperty>(ComponentBase->GetClass(), ComponentBase,
+		[&] (const FProperty* InProperty, const void* InContainer)
 		{
-			const FSoftObjectProperty* SoftObjectProperty = CastField<FSoftObjectProperty>(const_cast<FProperty*>(InProperty));
+			auto* SoftObjectProperty = CastField<const FSoftObjectProperty>(InProperty);
 			RemCheckVariable(SoftObjectProperty, return);
 					
-			FSoftObjectPtr* SoftObjectPtr = SoftObjectProperty->GetPropertyValuePtr_InContainer(const_cast<void*>(InContainer));
+			auto* SoftObjectPtr = SoftObjectProperty->GetPropertyValuePtr_InContainer(const_cast<void*>(InContainer));
 			RemCheckVariable(SoftObjectPtr, return);
 
 			if (SoftObjectPtr->IsNull())
@@ -313,7 +312,7 @@ void FRemWidgetComponentEditorModule::UpdateSoftObjects(const TWeakObjectPtr<con
 
 			// refresh soft object reference if name is out dated
 			if (const UObject* SoftObject = SoftObjectPtr->Get();
-				SoftObject && SoftObject->GetFName() != FName(*Rem::Common::GetObjectNameFromSoftObjectPath(SoftObjectPtr->ToSoftObjectPath())))
+				SoftObject && SoftObject->GetFName() != FName(*Rem::GetObjectNameFromSoftObjectPath(SoftObjectPtr->ToSoftObjectPath())))
 			{
 				ComponentBase->Modify();
 				*SoftObjectPtr = SoftObject;
