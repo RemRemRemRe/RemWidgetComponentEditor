@@ -57,12 +57,13 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 	IDetailCategoryBuilder& ComponentsCategory = DetailBuilder->EditCategory(PropertyHandle->GetDefaultCategoryName());
 
 	const FSimpleDelegate OnComponentsChanged = FSimpleDelegate::CreateLambda(
-		[WidgetObject, This{this}]
+		[WidgetObject, this]
 	{
-		WidgetObject->GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(WidgetObject, [This, WidgetObject]
+		WidgetObject->GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(WidgetObject,
+			[this, WidgetObject]
 		{
-			This->WidgetBlueprintEditor->RefreshPreview();
-			This->WidgetBlueprintEditor->SelectObjects({This->WidgetBlueprintEditor->GetPreview()});
+			WidgetBlueprintEditor->RefreshPreview();
+			WidgetBlueprintEditor->SelectObjects({WidgetBlueprintEditor->GetPreview()});
 		}));
 	});
 
