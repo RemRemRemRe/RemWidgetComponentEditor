@@ -12,9 +12,10 @@
 #include "WidgetBlueprintEditor.h"
 #include "Blueprint/WidgetBlueprintGeneratedClass.h"
 #include "Blueprint/WidgetTree.h"
-#include "Components/Widget.h"
 #include "Enum/RemContainerCombination.h"
 #include "Macro/RemAssertionMacros.h"
+#include "Object/RemObjectStatics.h"
+#include "Widgets/Input/SComboButton.h"
 #include "Widgets/Input/SSearchBox.h"
 
 #define LOCTEXT_NAMESPACE "ComponentBasedWidget"
@@ -36,7 +37,7 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 	RemCheckVariable(WidgetObject, return;);
 
 	WidgetBlueprintEditor = GetAssetEditorInstance<FWidgetBlueprintEditor>(WidgetObject->GetClass());
-	
+
 	const URemWidgetComponentAsExtension* Extension = WidgetObject->GetExtension<URemWidgetComponentAsExtension>();
 	if (!Extension)
 	{
@@ -59,7 +60,7 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 	const FSimpleDelegate OnComponentsChanged = FSimpleDelegate::CreateLambda(
 		[WidgetObject, this]
 	{
-		WidgetObject->GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(WidgetObject,
+		Rem::Object::SetTimerForThisTick(*WidgetObject, FTimerDelegate::CreateWeakLambda(WidgetObject,
 			[this, WidgetObject]
 		{
 			WidgetBlueprintEditor->RefreshPreview();
@@ -95,7 +96,7 @@ TSharedRef<SWidget> FRemComponentBasedWidgetDetails::MakeComboButton(const TShar
 		.ButtonContent()
 		[
 			SNew(STextBlock)
-			.Text(TAttribute<FText>::CreateLambda([=]
+			.Text(TAttribute<FText>::CreateLambda([PropertyHandle]
 			{
 				return GetCurrentValueText<TSoftObjectPtr<UWidget>>(PropertyHandle,
 				[](const TSoftObjectPtr<UWidget>& Widget)
@@ -208,7 +209,7 @@ void FRemComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterT
 		// ONLY use UBaseWidgetBlueprint::WidgetTree
 		// rather than	UUserWidget::WidgetTree
 		// or			UWidgetBlueprintGeneratedClass::WidgetTree (the widget class version)
-		// could make the drop down list up to date, (after rename a widget)
+		// could make the drop-down list up to date, (after rename a widget)
 		TArray<UWidget*> AllWidgets;
 		Cast<UBaseWidgetBlueprint>(WidgetBlueprintGeneratedClass.Get()->ClassGeneratedBy)->WidgetTree->GetAllWidgets(AllWidgets);
 

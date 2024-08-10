@@ -7,7 +7,6 @@ namespace UnrealBuildTool.Rules
 	{
 		public RemWidgetComponentEditor(ReadOnlyTargetRules target) : base(target)
 		{
-			PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 			ShadowVariableWarningLevel = WarningLevel.Error;
 			IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
 			DefaultBuildSettings = BuildSettingsVersion.Latest;
@@ -33,7 +32,6 @@ namespace UnrealBuildTool.Rules
 					"PropertyEditor",
 					"EditorStyle",
 					"Kismet",
-					"StructUtils",
 
 					"DeveloperSettings",
 					

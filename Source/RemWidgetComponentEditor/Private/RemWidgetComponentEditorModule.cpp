@@ -11,8 +11,12 @@
 #include "Blueprint/UserWidget.h"
 #include "Macro/RemAssertionMacros.h"
 #include "Blueprint/WidgetTree.h"
+#include "Object/RemObjectStatics.h"
 #include "Templates/RemIteratePropertiesOfType.h"
-#include "InstancedStruct.h"
+#include "TimerManager.h"
+#include "Engine/Engine.h"
+#include "UObject/Package.h"
+#include "WidgetBlueprint.h"
 
 class FRemWidgetComponentEditorModule : public IRemWidgetComponentEditorModule
 {
@@ -24,11 +28,11 @@ class FRemWidgetComponentEditorModule : public IRemWidgetComponentEditorModule
 	uint64 SavedFrameCounter = 0;
 	TWeakObjectPtr<const UBaseWidgetBlueprint> WidgetBlueprint;
 	TWeakObjectPtr<const UWidget> Widget;
-	
+
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
-	
+
 protected:
 	void RegisterCustomization();
 	void UnregisterCustomization();
@@ -48,9 +52,9 @@ void FRemWidgetComponentEditorModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory (but after global variables are initialized, of course.)
 	IRemWidgetComponentEditorModule::StartupModule();
-	
+
 	RegisterCustomization();
-	
+
 	OnObjectReplacedHandle = FCoreUObjectDelegates::OnObjectsReplaced.AddRaw(this, &FRemWidgetComponentEditorModule::OnObjectReplaced);
 	ObjectModifiedHandle = FCoreUObjectDelegates::OnObjectModified.AddRaw(this, &FRemWidgetComponentEditorModule::OnObjectModified);
 }
@@ -59,9 +63,9 @@ void FRemWidgetComponentEditorModule::ShutdownModule()
 {
 	FCoreUObjectDelegates::OnObjectModified.Remove(ObjectModifiedHandle);
 	FCoreUObjectDelegates::OnObjectsReplaced.Remove(OnObjectReplacedHandle);
-	
+
 	UnregisterCustomization();
-	
+
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
 	IRemWidgetComponentEditorModule::ShutdownModule();
@@ -80,9 +84,9 @@ void FRemWidgetComponentEditorModule::RegisterCustomization()
 		{
 			continue;
 		}
-		
+
 		const FName& AssetName = RegisteredClasses.Add_GetRef(*Class.GetAssetName());
-		
+
 		PropertyModule.RegisterCustomClassLayout(AssetName,
 			FOnGetDetailCustomizationInstance::CreateStatic(&FRemComponentBasedWidgetDetails::MakeInstance));
 
@@ -107,7 +111,7 @@ void FRemWidgetComponentEditorModule::UnregisterCustomization()
 	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 
 	const bool bSignificantlyChanged = RegisteredClasses.Num() > 0;
-	
+
 	for (const FName ClassName : RegisteredClasses)
 	{
 		PropertyModule.UnregisterCustomClassLayout(ClassName);
@@ -126,7 +130,7 @@ void FRemWidgetComponentEditorModule::OnSettingChanged(UObject* Settings, FPrope
 	if (Settings)
 	{
 		UnregisterCustomization();
-		
+
 		RegisterCustomization();
 	}
 }
@@ -135,13 +139,14 @@ static FAutoConsoleVariable CVarRemWidgetComponentEditorFixIncorrectComponentCla
 	TEXT("RemWidgetComponentEditor.FixIncorrectComponentClass"), true,
 		TEXT("Trying to fix incorrect component class when component blueprint recompiled."));
 
+// ReSharper disable once CppMemberFunctionMayBeStatic
 void FRemWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObject*>& ReplacementObjectMap) const
 {
 	if (!CVarRemWidgetComponentEditorFixIncorrectComponentClass->GetBool())
 	{
 		return;
 	}
-	
+
 	TArray<UObject*> Components;
 	GetObjectsOfClass(URemWidgetComponentBase::StaticClass(), Components,
 		true);
@@ -170,22 +175,22 @@ void FRemWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObj
 		{
 			continue;
 		}
-		
+
 		// Remove all nullptr from UUserWidget::Extensions
 		OwnerWidgetCDO->RemoveExtension(nullptr);
-		
+
 		const URemWidgetComponentAsExtension* Extension = OwnerWidgetCDO->GetExtension<URemWidgetComponentAsExtension>();
 		if (!Extension)
 		{
 			continue;
 		}
-			
+
 		Rem::WidgetComponent::ForeachUserWidgetComponent(Extension,
 [&](URemWidgetComponentBase** MemberPtr, int32)
 		{
 			RemCheckVariable(MemberPtr, return);
 			URemWidgetComponentBase* OldObject = *MemberPtr;
-		
+
 			RemCheckVariable(OldObject, return);
 
 			if (const UObject* const* ReplacementClassPtr =  ReplacementObjectMap.Find(OldObject->GetClass()))
@@ -193,13 +198,13 @@ void FRemWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObj
 				if (const UClass* ReplacementClass = Cast<UClass>(*ReplacementClassPtr))
 				{
 					const FName SavedName = OldObject->GetFName();
-						
+
 					OldObject->Rename(nullptr, GetTransientPackage(),
 				REN_DoNotDirty | REN_DontCreateRedirectors | REN_ForceNoResetLoaders);
-					
+
 					URemWidgetComponentBase* NewComponent = NewObject<URemWidgetComponentBase>(OwnerWidgetCDO,
 						ReplacementClass, SavedName);
-						
+
 					OwnerWidgetCDO->Modify();
 
 					UEngine::FCopyPropertiesForUnrelatedObjectsParams Params;
@@ -210,7 +215,7 @@ void FRemWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObj
 					Params.bClearReferences = false;
 					Params.bNotifyObjectReplacement = false;
 					UEngine::CopyPropertiesForUnrelatedObjects(OldObject, NewComponent, Params);
-					
+
 					OldObject->MarkAsGarbage();
 					*MemberPtr = NewComponent;
 				}
@@ -236,7 +241,7 @@ void FRemWidgetComponentEditorModule::OnObjectModified(UObject* Object)
 	}
 
 	// The implementation is determined by FWidgetBlueprintEditorUtils::RenameWidget
-	
+
 	if (!WidgetBlueprint.IsValid())
 	{
 		if (UBaseWidgetBlueprint* Blueprint = Cast<UBaseWidgetBlueprint>(Object))
@@ -247,7 +252,7 @@ void FRemWidgetComponentEditorModule::OnObjectModified(UObject* Object)
 	}
 	else if (!Object->IsA<UWidget>())
 	{
-		// skip modified call back of root widget and etc...
+		// skip modified call back of root widget etc...
 	}
 	else if (!Widget.IsValid())
 	{
@@ -265,31 +270,33 @@ void FRemWidgetComponentEditorModule::OnObjectModified(UObject* Object)
 	}
 	else
 	{
-		if (const UWidget* PreviewWidget = Cast<UWidget>(Object);
+		if (const auto* PreviewWidget = Cast<UWidget>(Object);
 			SavedFrameCounter == GFrameCounter
 			&& PreviewWidget && PreviewWidget->IsDesignTime())
 		{
 			// make sure it is a component based widget
-			if (const UUserWidget* OuterWidget = Cast<UUserWidget>(PreviewWidget->GetOuter()->GetOuter());
+			if (const auto* OuterWidget = Cast<UUserWidget>(PreviewWidget->GetOuter()->GetOuter());
 				OuterWidget && OuterWidget->GetExtension<URemWidgetComponentAsExtension>())
 			{
-				PreviewWidget->GetWorld()->GetTimerManager().SetTimerForNextTick(
-					FTimerDelegate::CreateRaw(
-						this, &FRemWidgetComponentEditorModule::UpdateSoftObjects, WidgetBlueprint));
+				Rem::Object::SetTimerForThisTick(*PreviewWidget, FTimerDelegate::CreateWeakLambda(WidgetBlueprint.Get(), [this]
+				{
+					UpdateSoftObjects(WidgetBlueprint);
+				}));
 			}
 		}
-		
+
 		WidgetBlueprint.Reset();
 		Widget.Reset();
 	}
 }
 
+// ReSharper disable once CppMemberFunctionMayBeStatic
 void FRemWidgetComponentEditorModule::UpdateSoftObjects(const TWeakObjectPtr<const UBaseWidgetBlueprint> InWidgetBlueprint) const
 {
 	RemCheckCondition(InWidgetBlueprint.IsValid(), return;);
-	
+
 	const UUserWidget* DefaultObject = Cast<UUserWidget>(InWidgetBlueprint->GeneratedClass->GetDefaultObject(false));
-			
+
 	Rem::WidgetComponent::ForeachUserWidgetComponent(DefaultObject,
 	[&](URemWidgetComponentBase** ObjectMemberPtr, int32)
 	{
@@ -301,7 +308,7 @@ void FRemWidgetComponentEditorModule::UpdateSoftObjects(const TWeakObjectPtr<con
 		{
 			auto* SoftObjectProperty = CastField<const FSoftObjectProperty>(InProperty);
 			RemCheckVariable(SoftObjectProperty, return);
-					
+
 			auto* SoftObjectPtr = SoftObjectProperty->GetPropertyValuePtr_InContainer(const_cast<void*>(InContainer));
 			RemCheckVariable(SoftObjectPtr, return);
 
@@ -310,7 +317,7 @@ void FRemWidgetComponentEditorModule::UpdateSoftObjects(const TWeakObjectPtr<con
 				return;
 			}
 
-			// refresh soft object reference if name is out dated
+			// refresh soft object reference if name is outdated
 			if (const UObject* SoftObject = SoftObjectPtr->Get();
 				SoftObject && SoftObject->GetFName() != FName(*Rem::GetObjectNameFromSoftObjectPath(SoftObjectPtr->ToSoftObjectPath())))
 			{

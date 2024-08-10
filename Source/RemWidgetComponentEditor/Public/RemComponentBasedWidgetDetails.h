@@ -5,12 +5,16 @@
 #include "RemDetailCustomizationUtilities.h"
 #include "IDetailCustomization.h"
 
+class SComboButton;
 class FWidgetBlueprintEditor;
 class UBaseWidgetBlueprint;
 class UWidgetBlueprintGeneratedClass;
 class UWidget;
 class IDetailLayoutBuilder;
 class IPropertyHandle;
+
+template <typename ItemType>
+class SListView;
 
 using namespace Rem::Editor;
 
