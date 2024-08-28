@@ -7,7 +7,8 @@
 #include "DetailCategoryBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
-#include "RemDetailCustomizationUtilities.h"
+#include "RemEditorUtilitiesStatics.h"
+#include "RemEditorUtilitiesStatics.inl"
 #include "RemWidgetComponentAsExtension.h"
 #include "WidgetBlueprintEditor.h"
 #include "Blueprint/WidgetBlueprintGeneratedClass.h"
@@ -192,7 +193,7 @@ TSharedRef<ITableRow> FRemComponentBasedWidgetDetails::OnGenerateListItem(const 
 			[
 				SNew(STextBlock)
 				.Font(IDetailLayoutBuilder::GetDetailFont())
-				.Text(GetWidgetName(TSoftObjectPtr<UWidget>(Widget)))
+				.Text(GetWidgetName(TSoftObjectPtr<const UWidget>(Widget)))
 			];
 	}
 

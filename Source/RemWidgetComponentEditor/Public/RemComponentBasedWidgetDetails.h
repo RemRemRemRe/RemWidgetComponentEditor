@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "RemDetailCustomizationUtilities.h"
+#include "RemEditorUtilitiesStatics.h"
 #include "IDetailCustomization.h"
 
 class SComboButton;

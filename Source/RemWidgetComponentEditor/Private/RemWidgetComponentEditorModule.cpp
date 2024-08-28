@@ -16,7 +16,6 @@
 #include "TimerManager.h"
 #include "Engine/Engine.h"
 #include "UObject/Package.h"
-#include "WidgetBlueprint.h"
 
 class FRemWidgetComponentEditorModule : public IRemWidgetComponentEditorModule
 {
@@ -74,18 +73,18 @@ void FRemWidgetComponentEditorModule::ShutdownModule()
 void FRemWidgetComponentEditorModule::RegisterCustomization()
 {
 	// Register customizations
-	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+	auto& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 
 	bool bSignificantlyChanged = false;
-	URemWidgetComponentEditorSetting* RemWidgetComponentEditorSetting = GetMutableDefault<URemWidgetComponentEditorSetting>();
-	for (const TSoftClassPtr<UUserWidget> Class : RemWidgetComponentEditorSetting->GetWidgetClassToCustomize())
+	auto* RemWidgetComponentEditorSetting = GetMutableDefault<URemWidgetComponentEditorSetting>();
+	for (const auto& Class : RemWidgetComponentEditorSetting->GetWidgetClassToCustomize())
 	{
 		if (Class.IsNull())
 		{
 			continue;
 		}
 
-		const FName& AssetName = RegisteredClasses.Add_GetRef(*Class.GetAssetName());
+		const auto& AssetName = RegisteredClasses.Add_GetRef(*Class.GetAssetName());
 
 		PropertyModule.RegisterCustomClassLayout(AssetName,
 			FOnGetDetailCustomizationInstance::CreateStatic(&FRemComponentBasedWidgetDetails::MakeInstance));
@@ -151,26 +150,26 @@ void FRemWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObj
 	GetObjectsOfClass(URemWidgetComponentBase::StaticClass(), Components,
 		true);
 
-	for (const UObject* Object : Components)
+	for (const auto* Object : Components)
 	{
 		if (!IsValid(Object->GetOuter()))
 		{
 			continue;
 		}
 
-		const UBaseWidgetBlueprint* Blueprint = Cast<UBaseWidgetBlueprint>(Object->GetOuter()->GetClass()->ClassGeneratedBy);
+		const auto* Blueprint = Cast<UBaseWidgetBlueprint>(Object->GetOuter()->GetClass()->ClassGeneratedBy);
 		if (!Blueprint)
 		{
 			continue;
 		}
 
-		const UClass* GeneratedClass = Blueprint->GeneratedClass;
+		const auto& GeneratedClass = Blueprint->GeneratedClass;
 		if (!GeneratedClass)
 		{
 			continue;
 		}
 
-		UUserWidget* OwnerWidgetCDO = Cast<UUserWidget>(GeneratedClass->GetDefaultObject(false));
+		auto* OwnerWidgetCDO = Cast<UUserWidget>(GeneratedClass->GetDefaultObject(false));
 		if (!OwnerWidgetCDO)
 		{
 			continue;
@@ -179,7 +178,7 @@ void FRemWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObj
 		// Remove all nullptr from UUserWidget::Extensions
 		OwnerWidgetCDO->RemoveExtension(nullptr);
 
-		const URemWidgetComponentAsExtension* Extension = OwnerWidgetCDO->GetExtension<URemWidgetComponentAsExtension>();
+		const auto* Extension = OwnerWidgetCDO->GetExtension<URemWidgetComponentAsExtension>();
 		if (!Extension)
 		{
 			continue;
@@ -189,20 +188,20 @@ void FRemWidgetComponentEditorModule::OnObjectReplaced(const TMap<UObject*, UObj
 [&](URemWidgetComponentBase** MemberPtr, int32)
 		{
 			RemCheckVariable(MemberPtr, return);
-			URemWidgetComponentBase* OldObject = *MemberPtr;
+			auto* OldObject = *MemberPtr;
 
 			RemCheckVariable(OldObject, return);
 
-			if (const UObject* const* ReplacementClassPtr =  ReplacementObjectMap.Find(OldObject->GetClass()))
+			if (const auto* const* ReplacementClassPtr =  ReplacementObjectMap.Find(OldObject->GetClass()))
 			{
-				if (const UClass* ReplacementClass = Cast<UClass>(*ReplacementClassPtr))
+				if (const auto* ReplacementClass = Cast<UClass>(*ReplacementClassPtr))
 				{
-					const FName SavedName = OldObject->GetFName();
+					const auto SavedName = OldObject->GetFName();
 
 					OldObject->Rename(nullptr, GetTransientPackage(),
 				REN_DoNotDirty | REN_DontCreateRedirectors | REN_ForceNoResetLoaders);
 
-					URemWidgetComponentBase* NewComponent = NewObject<URemWidgetComponentBase>(OwnerWidgetCDO,
+					auto* NewComponent = NewObject<URemWidgetComponentBase>(OwnerWidgetCDO,
 						ReplacementClass, SavedName);
 
 					OwnerWidgetCDO->Modify();
@@ -244,7 +243,7 @@ void FRemWidgetComponentEditorModule::OnObjectModified(UObject* Object)
 
 	if (!WidgetBlueprint.IsValid())
 	{
-		if (UBaseWidgetBlueprint* Blueprint = Cast<UBaseWidgetBlueprint>(Object))
+		if (auto* Blueprint = Cast<UBaseWidgetBlueprint>(Object))
 		{
 			SavedFrameCounter = GFrameCounter;
 			WidgetBlueprint = Blueprint;
@@ -256,7 +255,7 @@ void FRemWidgetComponentEditorModule::OnObjectModified(UObject* Object)
 	}
 	else if (!Widget.IsValid())
 	{
-		if (const UWidget* WidgetObject = Cast<UWidget>(Object);
+		if (const auto* WidgetObject = Cast<UWidget>(Object);
 			SavedFrameCounter == GFrameCounter
 			&& WidgetObject && !WidgetObject->IsDesignTime()
 			&& WidgetBlueprint.Get()->WidgetTree->FindWidget(WidgetObject->GetFName()) == WidgetObject)
@@ -295,12 +294,12 @@ void FRemWidgetComponentEditorModule::UpdateSoftObjects(const TWeakObjectPtr<con
 {
 	RemCheckCondition(InWidgetBlueprint.IsValid(), return;);
 
-	const UUserWidget* DefaultObject = Cast<UUserWidget>(InWidgetBlueprint->GeneratedClass->GetDefaultObject(false));
+	const auto* DefaultObject = Cast<UUserWidget>(InWidgetBlueprint->GeneratedClass->GetDefaultObject(false));
 
 	Rem::WidgetComponent::ForeachUserWidgetComponent(DefaultObject,
 	[&](URemWidgetComponentBase** ObjectMemberPtr, int32)
 	{
-		URemWidgetComponentBase* ComponentBase = *ObjectMemberPtr;
+		auto* ComponentBase = *ObjectMemberPtr;
 		RemCheckVariable(ComponentBase, return);
 
 		Rem::Property::IteratePropertiesOfType<FSoftObjectProperty>(ComponentBase->GetClass(), ComponentBase,
@@ -318,7 +317,7 @@ void FRemWidgetComponentEditorModule::UpdateSoftObjects(const TWeakObjectPtr<con
 			}
 
 			// refresh soft object reference if name is outdated
-			if (const UObject* SoftObject = SoftObjectPtr->Get();
+			if (const auto* SoftObject = SoftObjectPtr->Get();
 				SoftObject && SoftObject->GetFName() != FName(*Rem::GetObjectNameFromSoftObjectPath(SoftObjectPtr->ToSoftObjectPath())))
 			{
 				ComponentBase->Modify();
