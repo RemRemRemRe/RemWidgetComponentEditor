@@ -5,6 +5,8 @@
 #include "Engine/DeveloperSettings.h"
 #include "RemWidgetComponentEditorSetting.generated.h"
 
+class UUserWidget;
+
 /**
  * Directly configure whatever number of `UUserWidget` classes to turn detail customization on dynamically
  */

@@ -154,7 +154,7 @@ TSharedRef<SWidget> FRemComponentBasedWidgetDetails::GetPopupContent(const TShar
 			.AutoHeight()
 			[
 				SNew(SBox)
-				.MaxDesiredHeight(300)
+				.MaxDesiredHeight(300.0f)
 				[
 					WidgetListView.ToSharedRef()
 				]
