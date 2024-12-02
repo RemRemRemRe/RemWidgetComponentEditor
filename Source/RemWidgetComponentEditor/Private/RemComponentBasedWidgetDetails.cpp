@@ -74,11 +74,11 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 		PropertyHandle, ComponentsCategory, OnComponentsChanged);
 
 	const FPropertyCustomizationFunctor Predicate =
-	[this] (const TSharedPtr<IPropertyHandle>& Handle, FDetailWidgetRow& WidgetPropertyRow,
+	[this] (const TSharedRef<IPropertyHandle>& Handle, FDetailWidgetRow& WidgetPropertyRow,
 		const Rem::Enum::EContainerCombination MemberContainerType)
 	{
 		MakeCustomWidgetForProperty(Handle, WidgetPropertyRow, MemberContainerType,
-		[this] (const TSharedPtr<IPropertyHandle>& WidgetPropertyHandle)
+		[this] (const TSharedRef<IPropertyHandle>& WidgetPropertyHandle)
 		{
 			return MakeComboButton(WidgetPropertyHandle);
 		});
@@ -88,11 +88,11 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 	(PropertyHandle, ComponentsGroup, Predicate, Rem::Enum::EContainerCombination::ContainerItself);
 }
 
-TSharedRef<SWidget> FRemComponentBasedWidgetDetails::MakeComboButton(const TSharedPtr<IPropertyHandle>& PropertyHandle)
+TSharedRef<SWidget> FRemComponentBasedWidgetDetails::MakeComboButton(const TSharedRef<IPropertyHandle>& PropertyHandle)
 {
 	using namespace Rem::Editor;
 
-	const TSharedPtr<SComboButton> ComboButton = SNew(SComboButton)
+	auto ComboButton = SNew(SComboButton)
 		.ButtonStyle(FAppStyle::Get(), AssetComboStyleName)
 		.ForegroundColor(FAppStyle::GetColor(AssetNameColorName))
 		.ContentPadding(2.0f)
@@ -102,10 +102,13 @@ TSharedRef<SWidget> FRemComponentBasedWidgetDetails::MakeComboButton(const TShar
 			SNew(STextBlock)
 			.Text(TAttribute<FText>::CreateLambda([PropertyHandle]
 			{
-				return GetCurrentValueText<TSoftObjectPtr<UWidget>>(PropertyHandle,
-				[](const TSoftObjectPtr<UWidget>& Widget)
+				FPropertyAccess::Result Result;
+				auto Value = GetCurrentValue<TSoftObjectPtr<UWidget>>(PropertyHandle, Result);
+
+				return TryGetText(Result,
+				[Value]
 				{
-					return GetWidgetName(Widget);
+					return GetWidgetName(Value);
 				});
 			}))
 			.Font(IDetailLayoutBuilder::GetDetailFont())
@@ -114,12 +117,12 @@ TSharedRef<SWidget> FRemComponentBasedWidgetDetails::MakeComboButton(const TShar
 	ComboButton->SetOnGetMenuContent(FOnGetContent::CreateSP(
 		this, &FRemComponentBasedWidgetDetails::GetPopupContent, PropertyHandle, ComboButton));
 
-	return ComboButton.ToSharedRef();
+	return ComboButton;
 }
 
 // ReSharper disable CppPassValueParameterByConstReference
-TSharedRef<SWidget> FRemComponentBasedWidgetDetails::GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle,
-	const TSharedPtr<SComboButton> WidgetListComboButton)
+TSharedRef<SWidget> FRemComponentBasedWidgetDetails::GetPopupContent(const TSharedRef<IPropertyHandle> ChildHandle,
+	const TSharedRef<SComboButton> WidgetListComboButton)
 // ReSharper restore CppPassValueParameterByConstReference
 {
 	using namespace Rem::Editor;
@@ -130,7 +133,7 @@ TSharedRef<SWidget> FRemComponentBasedWidgetDetails::GetPopupContent(const TShar
 
 	MenuBuilder.BeginSection(NAME_None, LOCTEXT("BrowseHeader", "Browse"));
 	{
-		const TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView =
+		const auto WidgetListView =
 		SNew(SListView<TWeakObjectPtr<UWidget>>)
 			.ListItemsSource(&ReferencableWidgets)
 			.OnSelectionChanged(this, &FRemComponentBasedWidgetDetails::OnSelectionChanged, ChildHandle, WidgetListComboButton)
@@ -140,7 +143,7 @@ TSharedRef<SWidget> FRemComponentBasedWidgetDetails::GetPopupContent(const TShar
 		// Ensure no filter is applied at the time the menu opens
 		OnFilterTextChanged(FText::GetEmpty(), ChildHandle, WidgetListView);
 
-		int32 Result;
+		FPropertyAccess::Result Result;
 		WidgetListView->SetSelection(GetCurrentValue<UWidget*>(ChildHandle, Result));
 
 		TSharedPtr<SSearchBox> SearchBox;
@@ -161,7 +164,7 @@ TSharedRef<SWidget> FRemComponentBasedWidgetDetails::GetPopupContent(const TShar
 				SNew(SBox)
 				.MaxDesiredHeight(300.0f)
 				[
-					WidgetListView.ToSharedRef()
+					WidgetListView
 				]
 			];
 
@@ -176,7 +179,7 @@ TSharedRef<SWidget> FRemComponentBasedWidgetDetails::GetPopupContent(const TShar
 
 // ReSharper disable CppPassValueParameterByConstReference
 void FRemComponentBasedWidgetDetails::OnSelectionChanged(const TWeakObjectPtr<UWidget> InItem, const ESelectInfo::Type SelectionInfo,
-	const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SComboButton> WidgetListComboButton) const
+	const TSharedRef<IPropertyHandle> ChildHandle, const TSharedRef<SComboButton> WidgetListComboButton) const
 // ReSharper restore CppPassValueParameterByConstReference
 {
 	using namespace Rem::Editor;
@@ -211,10 +214,10 @@ TSharedRef<ITableRow> FRemComponentBasedWidgetDetails::OnGenerateListItem(const 
 
 // ReSharper disable CppPassValueParameterByConstReference
 void FRemComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText,
-	const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView)
+	const TSharedRef<IPropertyHandle> ChildHandle, const TSharedRef<SListView<TWeakObjectPtr<UWidget>>> WidgetListView)
 // ReSharper restore CppPassValueParameterByConstReference
 {
-	if (ChildHandle.IsValid() && WidgetBlueprintGeneratedClass.IsValid())
+	if (WidgetBlueprintGeneratedClass.IsValid())
 	{
 		// ONLY use UBaseWidgetBlueprint::WidgetTree
 		// rather than	UUserWidget::WidgetTree

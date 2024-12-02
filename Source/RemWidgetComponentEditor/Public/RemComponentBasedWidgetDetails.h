@@ -39,17 +39,17 @@ public:
 	virtual void CustomizeDetails( const TSharedPtr<IDetailLayoutBuilder>& DetailBuilder ) override;
 
 protected:
-	virtual TSharedRef<SWidget> MakeComboButton(const TSharedPtr<IPropertyHandle>& PropertyHandle);
+	virtual TSharedRef<SWidget> MakeComboButton(const TSharedRef<IPropertyHandle>& PropertyHandle);
 
-	virtual TSharedRef<SWidget> GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle,
-		const TSharedPtr<SComboButton> WidgetListComboButton);
+	virtual TSharedRef<SWidget> GetPopupContent(const TSharedRef<IPropertyHandle> ChildHandle,
+		const TSharedRef<SComboButton> WidgetListComboButton);
 
 	virtual void OnSelectionChanged(TWeakObjectPtr<UWidget> InItem, ESelectInfo::Type SelectionInfo,
-		TSharedPtr<IPropertyHandle> ChildHandle, TSharedPtr<SComboButton> WidgetListComboButton) const;
+		TSharedRef<IPropertyHandle> ChildHandle, TSharedRef<SComboButton> WidgetListComboButton) const;
 
 	virtual TSharedRef<ITableRow> OnGenerateListItem(TWeakObjectPtr<UWidget> InItem,
 											const TSharedRef<STableViewBase>& OwnerTable) const;
 
-	virtual void OnFilterTextChanged(const FText& InFilterText, const TSharedPtr<IPropertyHandle> ChildHandle,
-		const TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView);
+	virtual void OnFilterTextChanged(const FText& InFilterText, const TSharedRef<IPropertyHandle> ChildHandle,
+		const TSharedRef<SListView<TWeakObjectPtr<UWidget>>> WidgetListView);
 };
