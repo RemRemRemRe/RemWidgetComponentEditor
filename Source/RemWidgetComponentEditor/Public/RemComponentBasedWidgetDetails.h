@@ -2,9 +2,10 @@
 
 #pragma once
 
-#include "RemEditorUtilitiesStatics.h"
 #include "IDetailCustomization.h"
 
+class STableViewBase;
+class ITableRow;
 class SComboButton;
 class FWidgetBlueprintEditor;
 class UBaseWidgetBlueprint;
@@ -12,11 +13,10 @@ class UWidgetBlueprintGeneratedClass;
 class UWidget;
 class IDetailLayoutBuilder;
 class IPropertyHandle;
-
+namespace ESelectInfo { enum Type : int; }
 template <typename ItemType>
 class SListView;
-
-using namespace Rem::Editor;
+class SWidget;
 
 /**
  * Detail customization for any user widget with URemWidgetComponentAsExtension component
@@ -28,8 +28,6 @@ class REMWIDGETCOMPONENTEDITOR_API FRemComponentBasedWidgetDetails : public IDet
 	TArray<TWeakObjectPtr<UWidget>> ReferencableWidgets;
 
 	TWeakObjectPtr<UWidgetBlueprintGeneratedClass> WidgetBlueprintGeneratedClass;
-
-	FWidgetBlueprintEditor* WidgetBlueprintEditor{};
 
 #pragma endregion Data Members
 
@@ -44,7 +42,7 @@ protected:
 	virtual TSharedRef<SWidget> MakeComboButton(const TSharedPtr<IPropertyHandle>& PropertyHandle);
 
 	virtual TSharedRef<SWidget> GetPopupContent(const TSharedPtr<IPropertyHandle> ChildHandle,
-	                                            const TSharedPtr<SComboButton> WidgetListComboButton);
+		const TSharedPtr<SComboButton> WidgetListComboButton);
 
 	virtual void OnSelectionChanged(TWeakObjectPtr<UWidget> InItem, ESelectInfo::Type SelectionInfo,
 		TSharedPtr<IPropertyHandle> ChildHandle, TSharedPtr<SComboButton> WidgetListComboButton) const;
@@ -53,5 +51,5 @@ protected:
 											const TSharedRef<STableViewBase>& OwnerTable) const;
 
 	virtual void OnFilterTextChanged(const FText& InFilterText, const TSharedPtr<IPropertyHandle> ChildHandle,
-	                                 const TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView);
+		const TSharedPtr<SListView<TWeakObjectPtr<UWidget>>> WidgetListView);
 };

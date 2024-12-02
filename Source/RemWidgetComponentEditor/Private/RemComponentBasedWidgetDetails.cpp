@@ -4,7 +4,6 @@
 #include "RemComponentBasedWidgetDetails.h"
 
 #include "BaseWidgetBlueprint.h"
-#include "DetailCategoryBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
 #include "RemEditorUtilitiesStatics.h"
@@ -13,7 +12,6 @@
 #include "WidgetBlueprintEditor.h"
 #include "Blueprint/WidgetBlueprintGeneratedClass.h"
 #include "Blueprint/WidgetTree.h"
-#include "Enum/RemContainerCombination.h"
 #include "Macro/RemAssertionMacros.h"
 #include "Object/RemObjectStatics.h"
 #include "Widgets/Input/SComboButton.h"
@@ -28,6 +26,8 @@ TSharedRef<IDetailCustomization> FRemComponentBasedWidgetDetails::MakeInstance()
 
 void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailLayoutBuilder>& DetailBuilder)
 {
+	using namespace Rem::Editor;
+
 	IDetailCustomization::CustomizeDetails(DetailBuilder);
 
 	TArray< TWeakObjectPtr<UObject> > ObjectsBeingCustomized;
@@ -37,44 +37,45 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 	auto* WidgetObject = Cast<UUserWidget>(ObjectsBeingCustomized[0].Get());
 	RemCheckVariable(WidgetObject, return;);
 
-	WidgetBlueprintEditor = GetAssetEditorInstance<FWidgetBlueprintEditor>(WidgetObject->GetClass());
 
-	const URemWidgetComponentAsExtension* Extension = WidgetObject->GetExtension<URemWidgetComponentAsExtension>();
+	const auto* Extension = WidgetObject->GetExtension<URemWidgetComponentAsExtension>();
 	if (!Extension)
 	{
 		return;
 	}
 
-	FArrayProperty* ComponentsProperty = Extension->GetComponentsProperty();
+	auto* ComponentsProperty = Extension->GetComponentsProperty();
 	RemCheckVariable(ComponentsProperty, return;);
 
 	// cache widget blueprint class
 	WidgetBlueprintGeneratedClass = Cast<UWidgetBlueprintGeneratedClass>(DetailBuilder->GetBaseClass());
 
 	// generate array header widget
-	const TSharedPtr<IPropertyHandle> PropertyHandle = DetailBuilder->GetProperty(*GetPropertyPath(ComponentsProperty));
-	RemCheckCondition(PropertyHandle.IsValid(), return;);
+	const auto PropertyHandle = DetailBuilder->GetProperty(*GetPropertyPath(ComponentsProperty));
 	RemCheckCondition(PropertyHandle->IsValidHandle(), return;);
 
-	IDetailCategoryBuilder& ComponentsCategory = DetailBuilder->EditCategory(PropertyHandle->GetDefaultCategoryName());
+	auto& ComponentsCategory = DetailBuilder->EditCategory(PropertyHandle->GetDefaultCategoryName());
 
-	const FSimpleDelegate OnComponentsChanged = FSimpleDelegate::CreateLambda(
+	const auto OnComponentsChanged = FSimpleDelegate::CreateLambda(
 		[WidgetObject, this]
 	{
 		Rem::Object::SetTimerForThisTick(*WidgetObject, FTimerDelegate::CreateWeakLambda(WidgetObject,
 			[this, WidgetObject]
 		{
+			auto* WidgetBlueprintEditor = GetAssetEditorInstance<FWidgetBlueprintEditor>(WidgetObject->GetClass());
+			RemCheckVariable(WidgetBlueprintEditor, return;);
+
 			WidgetBlueprintEditor->RefreshPreview();
 			WidgetBlueprintEditor->SelectObjects({WidgetBlueprintEditor->GetPreview()});
 		}));
 	});
 
-	IDetailGroup& ComponentsGroup = GenerateContainerHeader(
+	auto& ComponentsGroup = GenerateContainerHeader(
 		PropertyHandle, ComponentsCategory, OnComponentsChanged);
 
 	const FPropertyCustomizationFunctor Predicate =
 	[this] (const TSharedPtr<IPropertyHandle>& Handle, FDetailWidgetRow& WidgetPropertyRow,
-		const EContainerCombination MemberContainerType)
+		const Rem::Enum::EContainerCombination MemberContainerType)
 	{
 		MakeCustomWidgetForProperty(Handle, WidgetPropertyRow, MemberContainerType,
 		[this] (const TSharedPtr<IPropertyHandle>& WidgetPropertyHandle)
@@ -84,11 +85,13 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 	};
 
 	GenerateWidgetForContainerContent<FSoftObjectProperty, UWidget>
-	(PropertyHandle, ComponentsGroup, Predicate, EContainerCombination::ContainerItself);
+	(PropertyHandle, ComponentsGroup, Predicate, Rem::Enum::EContainerCombination::ContainerItself);
 }
 
 TSharedRef<SWidget> FRemComponentBasedWidgetDetails::MakeComboButton(const TSharedPtr<IPropertyHandle>& PropertyHandle)
 {
+	using namespace Rem::Editor;
+
 	const TSharedPtr<SComboButton> ComboButton = SNew(SComboButton)
 		.ButtonStyle(FAppStyle::Get(), AssetComboStyleName)
 		.ForegroundColor(FAppStyle::GetColor(AssetNameColorName))
@@ -119,6 +122,8 @@ TSharedRef<SWidget> FRemComponentBasedWidgetDetails::GetPopupContent(const TShar
 	const TSharedPtr<SComboButton> WidgetListComboButton)
 // ReSharper restore CppPassValueParameterByConstReference
 {
+	using namespace Rem::Editor;
+
 	constexpr bool bInShouldCloseWindowAfterMenuSelection = true;
 	constexpr bool bCloseSelfOnly = true;
 	FMenuBuilder MenuBuilder(bInShouldCloseWindowAfterMenuSelection, nullptr, nullptr, bCloseSelfOnly);
@@ -140,7 +145,7 @@ TSharedRef<SWidget> FRemComponentBasedWidgetDetails::GetPopupContent(const TShar
 
 		TSharedPtr<SSearchBox> SearchBox;
 
-		const TSharedRef<SVerticalBox> MenuContent =
+		const auto MenuContent =
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -174,6 +179,8 @@ void FRemComponentBasedWidgetDetails::OnSelectionChanged(const TWeakObjectPtr<UW
 	const TSharedPtr<IPropertyHandle> ChildHandle, const TSharedPtr<SComboButton> WidgetListComboButton) const
 // ReSharper restore CppPassValueParameterByConstReference
 {
+	using namespace Rem::Editor;
+
 	if (SelectionInfo != ESelectInfo::Direct)
 	{
 		// value should set successfully
@@ -184,9 +191,11 @@ void FRemComponentBasedWidgetDetails::OnSelectionChanged(const TWeakObjectPtr<UW
 }
 
 TSharedRef<ITableRow> FRemComponentBasedWidgetDetails::OnGenerateListItem(const TWeakObjectPtr<UWidget> InItem,
-                                                                       const TSharedRef<STableViewBase>& OwnerTable) const
+	const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	if (const UWidget* Widget = InItem.Get())
+	using namespace Rem::Editor;
+
+	if (const auto* Widget = InItem.Get())
 	{
 		return
 			SNew(STableRow<TWeakObjectPtr<UWidget>>, OwnerTable)
@@ -218,7 +227,7 @@ void FRemComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterT
 			return Lhs.GetLabelText().CompareTo(Rhs.GetLabelText()) < 0;
 		});
 
-		const FObjectPropertyBase* ObjectProperty = CastField<FObjectPropertyBase>(ChildHandle->GetProperty());
+		const auto* ObjectProperty = CastField<FObjectPropertyBase>(ChildHandle->GetProperty());
 		if (!ObjectProperty)
 		{
 			return;
@@ -235,11 +244,11 @@ void FRemComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterT
 				continue;
 			}
 
-			if (const FString& CurrentFilterText = InFilterText.ToString();
-				CurrentFilterText.IsEmpty() ||
-				Widget->GetName().Contains(CurrentFilterText) ||
-				Widget->GetDisplayLabel().Contains(CurrentFilterText) ||
-				Widget->GetClass()->GetName().Contains(CurrentFilterText)
+			if (const auto& CurrentFilterString = InFilterText.ToString();
+				CurrentFilterString.IsEmpty() ||
+				Widget->GetName().Contains(CurrentFilterString) ||
+				Widget->GetDisplayLabel().Contains(CurrentFilterString) ||
+				Widget->GetClass()->GetName().Contains(CurrentFilterString)
 				)
 			{
 				ReferencableWidgets.Add(Widget);
