@@ -6,18 +6,15 @@
 #include "BaseWidgetBlueprint.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
-#include "RemEditorUtilitiesStatics.h"
+#include "RemEditorUtilitiesComboButton.inl"
 #include "RemEditorUtilitiesStatics.inl"
 #include "RemWidgetComponentAsExtension.h"
-#include "WidgetBlueprintEditor.h"
+#include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintGeneratedClass.h"
 #include "Blueprint/WidgetTree.h"
 #include "Macro/RemAssertionMacros.h"
 #include "Object/RemObjectStatics.h"
-#include "Widgets/Input/SComboButton.h"
-#include "Widgets/Input/SSearchBox.h"
-
-#define LOCTEXT_NAMESPACE "ComponentBasedWidget"
+#include "WidgetBlueprintEditor.h"
 
 TSharedRef<IDetailCustomization> FRemComponentBasedWidgetDetails::MakeInstance()
 {
@@ -36,7 +33,6 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 
 	auto* WidgetObject = Cast<UUserWidget>(ObjectsBeingCustomized[0].Get());
 	RemCheckVariable(WidgetObject, return;);
-
 
 	const auto* Extension = WidgetObject->GetExtension<URemWidgetComponentAsExtension>();
 	if (!Extension)
@@ -73,14 +69,58 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 	auto& ComponentsGroup = GenerateContainerHeader(
 		PropertyHandle, ComponentsCategory, OnComponentsChanged);
 
-	const FPropertyCustomizationFunctor Predicate =
-	[this] (const TSharedRef<IPropertyHandle>& Handle, FDetailWidgetRow& WidgetPropertyRow,
+	const auto Predicate = [this] (const TSharedRef<IPropertyHandle>& Handle, FDetailWidgetRow& WidgetPropertyRow,
 		const Rem::Enum::EContainerCombination MemberContainerType)
 	{
 		MakeCustomWidgetForProperty(Handle, WidgetPropertyRow, MemberContainerType,
 		[this] (const TSharedRef<IPropertyHandle>& WidgetPropertyHandle)
 		{
-			return MakeComboButton(WidgetPropertyHandle);
+			return MakeComboButton(WidgetPropertyHandle,
+				[this, WidgetPropertyHandle] (TSharedRef<SComboButton>& ComboButton)
+				{
+					return FOnGetContent::CreateStatic(&GetPopupContent<WidgetItemType>,
+						ComboButton,
+						&ReferencableWidgets,
+						SListView<WidgetItemType>::FOnSelectionChanged::CreateLambda(
+						[WidgetPropertyHandle, ComboButton](const WidgetItemType InItem, const ESelectInfo::Type SelectionInfo)
+						{
+							using namespace Rem::Editor;
+
+							if (SelectionInfo != ESelectInfo::Direct)
+							{
+								// value should set successfully
+								RemCheckCondition(SetObjectValue(InItem.Get(), WidgetPropertyHandle));
+
+								ComboButton->SetIsOpen(false);
+							}
+						}),
+						SListView<WidgetItemType>::FOnGenerateRow::CreateStatic(&OnGenerateListItem<WidgetItemType>,
+						[] (const WidgetItemType& Item)
+						{
+							using namespace Rem::Editor;
+							return GetWidgetName(Item.Get());
+						}),
+						[WidgetPropertyHandle]
+						{
+							return WidgetItemType{GetCurrentValue<TSoftObjectPtr<UWidget>>(WidgetPropertyHandle).Get()};
+						},
+						[this, WidgetPropertyHandle](TSharedRef<SListView<WidgetItemType>> ListView)
+						{
+							return FOnTextChanged::CreateRaw(this, &ThisClass::OnFilterTextChanged, WidgetPropertyHandle, ListView);
+						}
+					);
+				},
+				TAttribute<FText>::CreateLambda([WidgetPropertyHandle]
+				{
+					FPropertyAccess::Result Result;
+					auto Value = GetCurrentValue<TSoftObjectPtr<UWidget>>(WidgetPropertyHandle, Result);
+
+					return TryGetText(Result,
+					[Value]
+					{
+						return GetWidgetName(Value);
+					});
+				}));
 		});
 	};
 
@@ -88,134 +128,8 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 	(PropertyHandle, ComponentsGroup, Predicate, Rem::Enum::EContainerCombination::ContainerItself);
 }
 
-TSharedRef<SWidget> FRemComponentBasedWidgetDetails::MakeComboButton(const TSharedRef<IPropertyHandle>& PropertyHandle)
-{
-	using namespace Rem::Editor;
-
-	auto ComboButton = SNew(SComboButton)
-		.ButtonStyle(FAppStyle::Get(), AssetComboStyleName)
-		.ForegroundColor(FAppStyle::GetColor(AssetNameColorName))
-		.ContentPadding(2.0f)
-		.IsEnabled(!PropertyHandle->IsEditConst())
-		.ButtonContent()
-		[
-			SNew(STextBlock)
-			.Text(TAttribute<FText>::CreateLambda([PropertyHandle]
-			{
-				FPropertyAccess::Result Result;
-				auto Value = GetCurrentValue<TSoftObjectPtr<UWidget>>(PropertyHandle, Result);
-
-				return TryGetText(Result,
-				[Value]
-				{
-					return GetWidgetName(Value);
-				});
-			}))
-			.Font(IDetailLayoutBuilder::GetDetailFont())
-		];
-
-	ComboButton->SetOnGetMenuContent(FOnGetContent::CreateSP(
-		this, &FRemComponentBasedWidgetDetails::GetPopupContent, PropertyHandle, ComboButton));
-
-	return ComboButton;
-}
-
-// ReSharper disable CppPassValueParameterByConstReference
-TSharedRef<SWidget> FRemComponentBasedWidgetDetails::GetPopupContent(const TSharedRef<IPropertyHandle> ChildHandle,
-	const TSharedRef<SComboButton> WidgetListComboButton)
-// ReSharper restore CppPassValueParameterByConstReference
-{
-	using namespace Rem::Editor;
-
-	constexpr bool bInShouldCloseWindowAfterMenuSelection = true;
-	constexpr bool bCloseSelfOnly = true;
-	FMenuBuilder MenuBuilder(bInShouldCloseWindowAfterMenuSelection, nullptr, nullptr, bCloseSelfOnly);
-
-	MenuBuilder.BeginSection(NAME_None, LOCTEXT("BrowseHeader", "Browse"));
-	{
-		const auto WidgetListView =
-		SNew(SListView<TWeakObjectPtr<UWidget>>)
-			.ListItemsSource(&ReferencableWidgets)
-			.OnSelectionChanged(this, &FRemComponentBasedWidgetDetails::OnSelectionChanged, ChildHandle, WidgetListComboButton)
-			.OnGenerateRow(this, &FRemComponentBasedWidgetDetails::OnGenerateListItem)
-			.SelectionMode(ESelectionMode::Single);
-
-		// Ensure no filter is applied at the time the menu opens
-		OnFilterTextChanged(FText::GetEmpty(), ChildHandle, WidgetListView);
-
-		FPropertyAccess::Result Result;
-		WidgetListView->SetSelection(GetCurrentValue<UWidget*>(ChildHandle, Result));
-
-		TSharedPtr<SSearchBox> SearchBox;
-
-		const auto MenuContent =
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SAssignNew(SearchBox, SSearchBox)
-				.OnTextChanged(this, &FRemComponentBasedWidgetDetails::OnFilterTextChanged, ChildHandle, WidgetListView)
-			]
-
-			+ SVerticalBox::Slot()
-			.Padding(0, 2.0f, 0, 0)
-			.AutoHeight()
-			[
-				SNew(SBox)
-				.MaxDesiredHeight(300.0f)
-				[
-					WidgetListView
-				]
-			];
-
-		MenuBuilder.AddWidget(MenuContent, FText::GetEmpty(), true);
-
-		WidgetListComboButton->SetMenuContentWidgetToFocus(SearchBox);
-	}
-	MenuBuilder.EndSection();
-
-	return MenuBuilder.MakeWidget();
-}
-
-// ReSharper disable CppPassValueParameterByConstReference
-void FRemComponentBasedWidgetDetails::OnSelectionChanged(const TWeakObjectPtr<UWidget> InItem, const ESelectInfo::Type SelectionInfo,
-	const TSharedRef<IPropertyHandle> ChildHandle, const TSharedRef<SComboButton> WidgetListComboButton) const
-// ReSharper restore CppPassValueParameterByConstReference
-{
-	using namespace Rem::Editor;
-
-	if (SelectionInfo != ESelectInfo::Direct)
-	{
-		// value should set successfully
-		RemCheckCondition(SetObjectValue(InItem.Get(), ChildHandle));
-
-		WidgetListComboButton->SetIsOpen(false);
-	}
-}
-
-TSharedRef<ITableRow> FRemComponentBasedWidgetDetails::OnGenerateListItem(const TWeakObjectPtr<UWidget> InItem,
-	const TSharedRef<STableViewBase>& OwnerTable) const
-{
-	using namespace Rem::Editor;
-
-	if (const auto* Widget = InItem.Get())
-	{
-		return
-			SNew(STableRow<TWeakObjectPtr<UWidget>>, OwnerTable)
-			[
-				SNew(STextBlock)
-				.Font(IDetailLayoutBuilder::GetDetailFont())
-				.Text(GetWidgetName(TSoftObjectPtr<const UWidget>(Widget)))
-			];
-	}
-
-	return SNew(STableRow<TWeakObjectPtr<UWidget>>, OwnerTable);
-}
-
-// ReSharper disable CppPassValueParameterByConstReference
 void FRemComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText,
-	const TSharedRef<IPropertyHandle> ChildHandle, const TSharedRef<SListView<TWeakObjectPtr<UWidget>>> WidgetListView)
-// ReSharper restore CppPassValueParameterByConstReference
+	const TSharedRef<IPropertyHandle> ChildHandle, const TSharedRef<SListView<WidgetItemType>> WidgetListView)
 {
 	if (WidgetBlueprintGeneratedClass.IsValid())
 	{
@@ -261,5 +175,3 @@ void FRemComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterT
 		WidgetListView->RequestListRefresh();
 	}
 }
-
-#undef LOCTEXT_NAMESPACE

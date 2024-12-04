@@ -3,6 +3,7 @@
 #pragma once
 
 #include "IDetailCustomization.h"
+#include "Framework/SlateDelegates.h"
 
 class STableViewBase;
 class ITableRow;
@@ -32,6 +33,9 @@ class REMWIDGETCOMPONENTEDITOR_API FRemComponentBasedWidgetDetails : public IDet
 #pragma endregion Data Members
 
 public:
+	using ThisClass = FRemComponentBasedWidgetDetails;
+	using WidgetItemType = TWeakObjectPtr<UWidget>;
+
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
 	static TSharedRef<IDetailCustomization> MakeInstance();
 
@@ -39,17 +43,6 @@ public:
 	virtual void CustomizeDetails( const TSharedPtr<IDetailLayoutBuilder>& DetailBuilder ) override;
 
 protected:
-	virtual TSharedRef<SWidget> MakeComboButton(const TSharedRef<IPropertyHandle>& PropertyHandle);
-
-	virtual TSharedRef<SWidget> GetPopupContent(const TSharedRef<IPropertyHandle> ChildHandle,
-		const TSharedRef<SComboButton> WidgetListComboButton);
-
-	virtual void OnSelectionChanged(TWeakObjectPtr<UWidget> InItem, ESelectInfo::Type SelectionInfo,
-		TSharedRef<IPropertyHandle> ChildHandle, TSharedRef<SComboButton> WidgetListComboButton) const;
-
-	virtual TSharedRef<ITableRow> OnGenerateListItem(TWeakObjectPtr<UWidget> InItem,
-											const TSharedRef<STableViewBase>& OwnerTable) const;
-
 	virtual void OnFilterTextChanged(const FText& InFilterText, const TSharedRef<IPropertyHandle> ChildHandle,
 		const TSharedRef<SListView<TWeakObjectPtr<UWidget>>> WidgetListView);
 };
