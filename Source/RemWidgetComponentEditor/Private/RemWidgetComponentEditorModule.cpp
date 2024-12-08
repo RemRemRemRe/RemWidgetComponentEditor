@@ -3,6 +3,7 @@
 #include "RemWidgetComponentEditorModule.h"
 
 #include "BaseWidgetBlueprint.h"
+#include "PropertyEditorModule.h"
 #include "RemComponentBasedWidgetDetails.h"
 #include "RemWidgetComponentAsExtension.h"
 #include "RemWidgetComponentBase.h"

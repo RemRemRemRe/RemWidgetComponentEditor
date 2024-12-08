@@ -78,11 +78,11 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 			return MakeComboButton(WidgetPropertyHandle,
 				[this, WidgetPropertyHandle] (TSharedRef<SComboButton>& ComboButton)
 				{
-					return FOnGetContent::CreateStatic(&GetPopupContent<WidgetItemType>,
+					return FOnGetContent::CreateStatic(&GetPopupContent<FListViewItemType>,
 						ComboButton,
-						&ReferencableWidgets,
-						SListView<WidgetItemType>::FOnSelectionChanged::CreateLambda(
-						[WidgetPropertyHandle, ComboButton](const WidgetItemType InItem, const ESelectInfo::Type SelectionInfo)
+						&ListViewItems,
+						SListView<FListViewItemType>::FOnSelectionChanged::CreateLambda(
+						[WidgetPropertyHandle, ComboButton](const FListViewItemType InItem, const ESelectInfo::Type SelectionInfo)
 						{
 							using namespace Rem::Editor;
 
@@ -94,23 +94,23 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 								ComboButton->SetIsOpen(false);
 							}
 						}),
-						SListView<WidgetItemType>::FOnGenerateRow::CreateStatic(&OnGenerateListItem<WidgetItemType>,
-						[] (const WidgetItemType& Item)
+						SListView<FListViewItemType>::FOnGenerateRow::CreateStatic(&OnGenerateListItem<FListViewItemType>,
+						[] (const FListViewItemType& Item) -> FText
 						{
 							using namespace Rem::Editor;
 							return GetWidgetName(Item.Get());
 						}),
-						[WidgetPropertyHandle]
+						[WidgetPropertyHandle]() -> FListViewItemType
 						{
-							return WidgetItemType{GetCurrentValue<TSoftObjectPtr<UWidget>>(WidgetPropertyHandle).Get()};
+							return FListViewItemType{GetCurrentValue<TSoftObjectPtr<UWidget>>(WidgetPropertyHandle).Get()};
 						},
-						[this, WidgetPropertyHandle](TSharedRef<SListView<WidgetItemType>> ListView)
+						[this, WidgetPropertyHandle](TSharedRef<SListView<FListViewItemType>> ListView)
 						{
 							return FOnTextChanged::CreateRaw(this, &ThisClass::OnFilterTextChanged, WidgetPropertyHandle, ListView);
 						}
 					);
 				},
-				TAttribute<FText>::CreateLambda([WidgetPropertyHandle]
+				TAttribute<FText>::CreateLambda([WidgetPropertyHandle]() -> FText
 				{
 					FPropertyAccess::Result Result;
 					auto Value = GetCurrentValue<TSoftObjectPtr<UWidget>>(WidgetPropertyHandle, Result);
@@ -129,22 +129,22 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 }
 
 void FRemComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterText,
-	const TSharedRef<IPropertyHandle> ChildHandle, const TSharedRef<SListView<WidgetItemType>> WidgetListView)
+	const TSharedRef<IPropertyHandle> FilterTextPropertyHandle, const TSharedRef<SListView<FListViewItemType>> WidgetListView)
 {
-	if (WidgetBlueprintGeneratedClass.IsValid())
+	if (auto* GeneratedClass = WidgetBlueprintGeneratedClass.Get())
 	{
 		// ONLY use UBaseWidgetBlueprint::WidgetTree
 		// rather than	UUserWidget::WidgetTree
 		// or			UWidgetBlueprintGeneratedClass::WidgetTree (the widget class version)
 		// could make the drop-down list up to date, (after rename a widget)
 		TArray<UWidget*> AllWidgets;
-		Cast<UBaseWidgetBlueprint>(WidgetBlueprintGeneratedClass.Get()->ClassGeneratedBy)->WidgetTree->GetAllWidgets(AllWidgets);
+		Cast<UBaseWidgetBlueprint>(GeneratedClass->ClassGeneratedBy)->WidgetTree->GetAllWidgets(AllWidgets);
 
 		AllWidgets.Sort([](const UWidget& Lhs, const UWidget& Rhs) {
 			return Lhs.GetLabelText().CompareTo(Rhs.GetLabelText()) < 0;
 		});
 
-		const auto* ObjectProperty = CastField<FObjectPropertyBase>(ChildHandle->GetProperty());
+		const auto* ObjectProperty = CastField<FObjectPropertyBase>(FilterTextPropertyHandle->GetProperty());
 		if (!ObjectProperty)
 		{
 			return;
@@ -152,26 +152,28 @@ void FRemComponentBasedWidgetDetails::OnFilterTextChanged(const FText& InFilterT
 
 		const UClass* FilterWidgetClass = ObjectProperty->PropertyClass;
 
-		ReferencableWidgets.Reset();
+		ListViewItems.Reset();
 
-		for (UWidget* Widget : AllWidgets)
+		const auto& CurrentFilterString = InFilterText.ToString();
+
+		for (auto* Widget : AllWidgets)
 		{
-			if (!Widget->IsA(FilterWidgetClass))
+			if (!Widget || !Widget->IsA(FilterWidgetClass))
 			{
 				continue;
 			}
 
-			if (const auto& CurrentFilterString = InFilterText.ToString();
-				CurrentFilterString.IsEmpty() ||
+			if (CurrentFilterString.IsEmpty() ||
 				Widget->GetName().Contains(CurrentFilterString) ||
 				Widget->GetDisplayLabel().Contains(CurrentFilterString) ||
 				Widget->GetClass()->GetName().Contains(CurrentFilterString)
 				)
 			{
-				ReferencableWidgets.Add(Widget);
+				ListViewItems.Add(Widget);
 			}
 		}
 
+		ListViewItems.Shrink();
 		WidgetListView->RequestListRefresh();
 	}
 }

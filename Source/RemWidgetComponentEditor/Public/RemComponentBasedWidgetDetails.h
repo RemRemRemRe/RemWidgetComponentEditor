@@ -3,7 +3,6 @@
 #pragma once
 
 #include "IDetailCustomization.h"
-#include "Framework/SlateDelegates.h"
 
 class STableViewBase;
 class ITableRow;
@@ -26,15 +25,15 @@ class REMWIDGETCOMPONENTEDITOR_API FRemComponentBasedWidgetDetails : public IDet
 {
 #pragma region Data Members
 
-	TArray<TWeakObjectPtr<UWidget>> ReferencableWidgets;
+	TArray<TWeakObjectPtr<UWidget>> ListViewItems;
 
-	TWeakObjectPtr<UWidgetBlueprintGeneratedClass> WidgetBlueprintGeneratedClass;
+	TWeakObjectPtr<const UWidgetBlueprintGeneratedClass> WidgetBlueprintGeneratedClass;
 
 #pragma endregion Data Members
 
 public:
 	using ThisClass = FRemComponentBasedWidgetDetails;
-	using WidgetItemType = TWeakObjectPtr<UWidget>;
+	using FListViewItemType = decltype(ListViewItems)::ElementType;
 
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
 	static TSharedRef<IDetailCustomization> MakeInstance();
@@ -43,6 +42,6 @@ public:
 	virtual void CustomizeDetails( const TSharedPtr<IDetailLayoutBuilder>& DetailBuilder ) override;
 
 protected:
-	virtual void OnFilterTextChanged(const FText& InFilterText, const TSharedRef<IPropertyHandle> ChildHandle,
+	virtual void OnFilterTextChanged(const FText& InFilterText, const TSharedRef<IPropertyHandle> FilterTextPropertyHandle,
 		const TSharedRef<SListView<TWeakObjectPtr<UWidget>>> WidgetListView);
 };
