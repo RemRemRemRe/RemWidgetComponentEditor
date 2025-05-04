@@ -278,7 +278,7 @@ void FRemWidgetComponentEditorModule::OnObjectModified(UObject* Object)
 			if (const auto* OuterWidget = Cast<UUserWidget>(PreviewWidget->GetOuter()->GetOuter());
 				OuterWidget && OuterWidget->GetExtension<URemWidgetComponentAsExtension>())
 			{
-				Rem::Object::SetTimerForThisTick(*PreviewWidget, FTimerDelegate::CreateWeakLambda(WidgetBlueprint.Get(), [this]
+				Rem::Object::SetTimerForThisTick(*PreviewWidget, Rem::FTimerDelegate::CreateWeakLambda(WidgetBlueprint.Get(), [this]
 				{
 					UpdateSoftObjects(WidgetBlueprint);
 				}));

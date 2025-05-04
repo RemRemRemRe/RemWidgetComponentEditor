@@ -55,7 +55,7 @@ void FRemComponentBasedWidgetDetails::CustomizeDetails(const TSharedPtr<IDetailL
 	const auto OnComponentsChanged = FSimpleDelegate::CreateLambda(
 		[WidgetObject, this]
 	{
-		Rem::Object::SetTimerForThisTick(*WidgetObject, FTimerDelegate::CreateWeakLambda(WidgetObject,
+		Rem::Object::SetTimerForThisTick(*WidgetObject, Rem::FTimerDelegate::CreateWeakLambda(WidgetObject,
 			[this, WidgetObject]
 		{
 			auto* WidgetBlueprintEditor = GetAssetEditorInstance<FWidgetBlueprintEditor>(WidgetObject->GetClass());
