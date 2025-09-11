@@ -4,6 +4,8 @@
 
 #include "IDetailCustomization.h"
 
+#include "UObject/WeakObjectPtr.h"
+
 class STableViewBase;
 class ITableRow;
 class SComboButton;
