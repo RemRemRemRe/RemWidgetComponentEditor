@@ -304,13 +304,10 @@ void FRemWidgetComponentEditorModule::UpdateSoftObjects(const TWeakObjectPtr<con
 		auto* ComponentBase = *ObjectMemberPtr;
 		RemCheckVariable(ComponentBase, return);
 
-		Rem::Property::IteratePropertiesOfType<FSoftObjectProperty>(ComponentBase->GetClass(), ComponentBase,
-		[&] (const FProperty* InProperty, const void* InContainer)
+		Rem::Property::IteratePropertiesOfType<FSoftObjectProperty>(ComponentBase->GetClass(), *ComponentBase,
+		[&] (const FSoftObjectProperty& SoftObjectProperty, void* InContainer)
 		{
-			auto* SoftObjectProperty = CastField<const FSoftObjectProperty>(InProperty);
-			RemCheckVariable(SoftObjectProperty, return);
-
-			auto* SoftObjectPtr = SoftObjectProperty->GetPropertyValuePtr_InContainer(const_cast<void*>(InContainer));
+			auto* SoftObjectPtr = SoftObjectProperty.GetPropertyValuePtr_InContainer(InContainer);
 			RemCheckVariable(SoftObjectPtr, return);
 
 			if (SoftObjectPtr->IsNull())
