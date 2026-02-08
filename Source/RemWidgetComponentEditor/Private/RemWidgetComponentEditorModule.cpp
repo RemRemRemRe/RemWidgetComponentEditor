@@ -108,19 +108,20 @@ void FRemWidgetComponentEditorModule::RegisterCustomization()
 void FRemWidgetComponentEditorModule::UnregisterCustomization()
 {
 	// Unregister customizations
-	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+	auto* PropertyModule = FModuleManager::GetModulePtr<FPropertyEditorModule>("PropertyEditor");
+    RemCheckVariable(PropertyModule, return;, REM_NO_LOG_OR_ASSERTION);
 
 	const bool bSignificantlyChanged = RegisteredClasses.Num() > 0;
 
 	for (const FName ClassName : RegisteredClasses)
 	{
-		PropertyModule.UnregisterCustomClassLayout(ClassName);
+		PropertyModule->UnregisterCustomClassLayout(ClassName);
 	}
 
 	if (bSignificantlyChanged)
 	{
 		RegisteredClasses.Reset();
-		PropertyModule.NotifyCustomizationModuleChanged();
+		PropertyModule->NotifyCustomizationModuleChanged();
 	}
 }
 
