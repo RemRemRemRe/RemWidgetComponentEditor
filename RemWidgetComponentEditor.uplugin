@@ -1,40 +1,40 @@
 {
-	"FileVersion": 3,
-	"Version": 1,
-	"VersionName": "1.0",
-	"FriendlyName": "RemWidgetComponentEditor",
-	"Description": "",
-	"Category": "Editor",
-	"CreatedBy": "RemRemRemRe",
-	"CreatedByURL": "",
-	"DocsURL": "",
-	"MarketplaceURL": "",
-	"SupportURL": "",
-	"CanContainContent": true,
-	"IsBetaVersion": false,
-	"IsExperimentalVersion": false,
-	"Installed": false,
-	"EnabledByDefault": false,
-	"BuiltInInitialFeatureState": "Active",
-	"Modules": [
-		{
-			"Name": "RemWidgetComponentEditor",
-			"Type": "UncookedOnly",
-			"LoadingPhase": "Default"
-		}
-	],
-	"Plugins": [
-		{
-			"Name": "RemWidgetComponent",
-			"Enabled": true
-		},
-		{
-			"Name": "RemCommon",
-			"Enabled": true
-		},
-		{
-			"Name": "RemEditorUtilities",
-			"Enabled": true
-		}
-	]
+    "FileVersion": 3,
+    "Version": 1,
+    "VersionName": "1.0",
+    "FriendlyName": "RemWidgetComponentEditor",
+    "Description": "",
+    "Category": "Editor",
+    "CreatedBy": "RemRemRemRe",
+    "CreatedByURL": "",
+    "DocsURL": "",
+    "MarketplaceURL": "",
+    "SupportURL": "",
+    "CanContainContent": true,
+    "IsBetaVersion": false,
+    "IsExperimentalVersion": false,
+    "Installed": false,
+    "EnabledByDefault": false,
+    "BuiltInInitialFeatureState": "Active",
+    "Modules": [
+        {
+            "Name": "RemWidgetComponentEditor",
+            "Type": "UncookedOnly",
+            "LoadingPhase": "Default"
+        }
+    ],
+    "Plugins": [
+        {
+            "Name": "RemWidgetComponent",
+            "Enabled": true
+        },
+        {
+            "Name": "RemCommon",
+            "Enabled": true
+        },
+        {
+            "Name": "RemEditorUtilities",
+            "Enabled": true
+        }
+    ]
 }

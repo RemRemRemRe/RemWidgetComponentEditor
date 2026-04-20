@@ -13,25 +13,25 @@ class UUserWidget;
 UCLASS(config = Editor, defaultconfig, notplaceable, BlueprintType)
 class REMWIDGETCOMPONENTEDITOR_API URemWidgetComponentEditorSetting : public UDeveloperSettings
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 #pragma region Data Members
 
-	UPROPERTY(Config, EditAnywhere, Category = Component)
-	TArray<TSoftClassPtr<UUserWidget>> WidgetClassToCustomize;
+    UPROPERTY(Config, EditAnywhere, Category = Component)
+    TArray<TSoftClassPtr<UUserWidget>> WidgetClassToCustomize;
 
 #pragma endregion Data Members
 
 public:
-	TArray<TSoftClassPtr<UUserWidget>> GetWidgetClassToCustomize() const;
+    TArray<TSoftClassPtr<UUserWidget>> GetWidgetClassToCustomize() const;
 
-	void SetWidgetClassToCustomize(const TArray<TSoftClassPtr<UUserWidget>>& InWidgetClassToCustomize);
+    void SetWidgetClassToCustomize(const TArray<TSoftClassPtr<UUserWidget>>& InWidgetClassToCustomize);
 
 #if WITH_EDITOR
 
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
-	bool RemoveBlueprintClasses();
+    bool RemoveBlueprintClasses();
 
 #endif
 
