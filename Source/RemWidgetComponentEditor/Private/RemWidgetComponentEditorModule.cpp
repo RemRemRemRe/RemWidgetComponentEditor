@@ -309,7 +309,8 @@ void FRemWidgetComponentEditorModule::UpdateSoftObjects(
             auto* ComponentBase = *ObjectMemberPtr;
             RemCheckVariable(ComponentBase, return);
 
-            Rem::Property::IteratePropertiesOfType<FSoftObjectProperty>(ComponentBase->GetClass(), *ComponentBase,
+            Rem::Property::IteratePropertiesOfType<FSoftObjectProperty>(ComponentBase->GetClass(),
+                Rem::MakeNotNull(ComponentBase),
                 [&](const FSoftObjectProperty& SoftObjectProperty, void* InContainer)
                 {
                     auto* SoftObjectPtr = SoftObjectProperty.GetPropertyValuePtr_InContainer(InContainer);
