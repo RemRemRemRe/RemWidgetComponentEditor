@@ -204,7 +204,7 @@ void FRemWidgetComponentEditorModule::OnObjectReplaced(
                         const auto SavedName = OldObject->GetFName();
 
                         OldObject->Rename(nullptr, GetTransientPackage(),
-                            REN_DoNotDirty | REN_DontCreateRedirectors | REN_ForceNoResetLoaders);
+                            REN_DoNotDirty | REN_DontCreateRedirectors);
 
                         auto* NewComponent = NewObject<URemWidgetComponentBase>(OwnerWidgetCDO,
                             ReplacementClass, SavedName);
