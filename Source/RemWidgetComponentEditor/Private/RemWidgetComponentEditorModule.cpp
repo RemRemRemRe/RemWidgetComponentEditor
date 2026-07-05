@@ -29,6 +29,7 @@ class FRemWidgetComponentEditorModule : public IRemWidgetComponentEditorModule
     TWeakObjectPtr<const UBaseWidgetBlueprint> WidgetBlueprint;
     TWeakObjectPtr<const UWidget> Widget;
 
+public:
     /** IModuleInterface implementation */
     virtual void StartupModule() override;
     virtual void ShutdownModule() override;
@@ -111,7 +112,7 @@ void FRemWidgetComponentEditorModule::UnregisterCustomization()
 {
     // Unregister customizations
     auto* PropertyModule = FModuleManager::GetModulePtr<FPropertyEditorModule>("PropertyEditor");
-    RemCheckVariable(PropertyModule, return;, REM_NO_LOG_OR_ASSERTION);
+    RemCheckVariable(REM_NO_ASSERTION, PropertyModule, return;);
 
     const bool bSignificantlyChanged = RegisteredClasses.Num() > 0;
 
