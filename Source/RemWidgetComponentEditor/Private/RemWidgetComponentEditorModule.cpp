@@ -2,12 +2,16 @@
 
 #include "RemWidgetComponentEditorModule.h"
 
+namespace
+{
 class FRemWidgetComponentEditorModule : public IRemWidgetComponentEditorModule
 {
+public:
     /** IModuleInterface implementation */
     virtual void StartupModule() override;
     virtual void ShutdownModule() override;
 };
+}
 
 IMPLEMENT_MODULE(FRemWidgetComponentEditorModule, RemWidgetComponentEditor)
 
