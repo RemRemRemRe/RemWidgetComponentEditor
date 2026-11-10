@@ -7,6 +7,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintGeneratedClass.h"
 #include "Blueprint/WidgetTree.h"
+#include "Widgets/Views/SListView.h"
 
 TSharedRef<IDetailCustomization> FRemComponentBasedWidgetDetails::MakeInstance()
 {

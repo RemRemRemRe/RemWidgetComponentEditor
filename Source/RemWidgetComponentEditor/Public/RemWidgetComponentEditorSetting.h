@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Engine/DeveloperSettings.h"
+#include "UObject/SoftObjectPtr.h"
 #include "RemWidgetComponentEditorSetting.generated.h"
 
 class UUserWidget;
